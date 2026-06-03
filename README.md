@@ -235,6 +235,36 @@ See [`.env.example`](.env.example) for the complete list.
 
 ---
 
+## Roadmap
+
+### Phase 1 — Core Architecture (in progress)
+- [x] Real-time on-chain scanner (Mantle blocks, whale transfers, protocol interactions)
+- [x] 3-provider AI fallback chain (OpenAI → Groq → AltLLM)
+- [x] Paper trading engine ($10K virtual capital)
+- [x] Live dashboard + Telegram alerts
+- [ ] **Strategy layer** — RSI, Volume Anomaly, Nostalgia patterns
+- [ ] **WhaleScore** — mathematical scoring of whale activity
+- [ ] **AI arbiter** — strategies compute for free, AI only says YES/NO
+- [ ] **Database (SQLite)** — persistent history for all users
+
+### Phase 2 — Infrastructure
+- [ ] Docker: single `docker-compose up`
+- [ ] MetaMask wallet auth (browser-based, no .env keys)
+- [ ] UI fixes: theme toggle, refresh, reconnect
+
+### Phase 3 — Sponsor APIs (awaiting Twitter restore)
+- [ ] Nansen AI — whale intelligence
+- [ ] Elfa AI — social sentiment
+- [ ] Surf AI — additional AI compute
+- [ ] Orbit AI — agent tooling
+
+### Phase 4 — Production
+- [ ] Real DEX trading on Mantle (user's own wallet)
+- [ ] Backtesting dashboard
+- [ ] Strategy leaderboard
+
+---
+
 ## License
 
 MIT
@@ -242,5 +272,5 @@ MIT
 ---
 
 <p align="center">
-  Built for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a> • Phase II: AI Awakening
+  Built with ☕ and ❤️ for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a> • Phase II: AI Awakening
 </p>

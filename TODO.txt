@@ -1,21 +1,34 @@
-TODO: Бэклог
-============
+TODO: Development Roadmap
+=========================
 
-Высокий приоритет
+Phase 1 — Architecture Rewrite (core)
+--------------------------------------
+- [ ] Trigger layer: whale movement / volume spike / protocol event → wakes up analyzer
+- [ ] Strategy layer: 3 parallel strategies run on trigger
+      1. RSIStrategy — oversold/overbought on historical klines
+      2. VolumeStrategy — volume anomaly + protocol TVL change
+      3. NostalgiaStrategy — pattern-based (adapted from Gekko/Nostalgia)
+- [ ] WhaleScore — mathematical score based on wallet history, flow direction, exchange interaction
+- [ ] AI arbiter — receives {RSI, Volume, Nostalgia, Whale} scores, says YES/NO to trade
+       NOT "generate signal from scratch" (costly), just "approve or reject" (cheap)
+- [ ] Database (SQLite): persist signals, trades, P&L, strategy scores historically
+       So users who join a week later see full history, not blank screen
+
+Phase 2 — Infrastructure
+-------------------------
+- [ ] Docker: single docker-compose.yml (backend + frontend + db)
+- [ ] Wallet connect via MetaMask browser auth (not .env private key)
+- [ ] Fix UI buttons: theme toggle, refresh, reconnect
+
+Phase 3 — Sponsors (Twitter unlock needed)
+---------------------------------------------
+- [ ] Nansen AI ($7,000 credits) — whale API
+- [ ] Elfa AI ($36,000 credits) — social sentiment
+- [ ] Surf AI ($30,000 credits) — AI compute
+- [ ] Orbit AI ($30,000 credits) — agent tools
+
+Phase 4 — Polish
 -----------------
-- [ ] База данных (SQLite): хранить сигналы, трейды, P&L исторически
-      Сейчас всё в памяти — при перезапуске сервера данные теряются.
-      Пользователь должен видеть историю даже если зашёл через неделю.
-- [ ] Docker: единый docker-compose.yml (backend + frontend + db)
-
-Фронтенд
---------
-- [ ] Кнопки: переключение темы, refresh данных, reconnect wallet
-- [ ] Wallet connect через MetaMask (браузерная аутентификация), а не .env ключ
-
-Twitter заблокирован — добыть после восстановления
----------------------------------------------------
-- [ ] Nansen AI ($7,000 кредитов) — API key для отслеживания китов
-- [ ] Elfa AI ($36,000 кредитов) — социальный сентимент
-- [ ] Surf AI ($30,000 кредитов) — AI анализ
-- [ ] Orbit AI ($30,000 кредитов) — через X/Telegram
+- [ ] Backtesting dashboard — replay strategies on historical data
+- [ ] Leaderboard — compare strategy performance
+- [ ] Real DEX trading on Mantle (via dex_trader.py, user's own wallet)
