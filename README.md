@@ -40,6 +40,22 @@ Mantle Vision is an autonomous AI agent that monitors the Mantle blockchain in r
 
 ---
 
+## Screenshots
+
+### Dashboard
+Real-time portfolio value, P&L, active signals, and network status — all in one place.
+![Dashboard](dashboard.png)
+
+### Signals
+AI-generated trading signals with direction, confidence score, and reasoning from each analysis cycle.
+![Signals](signals.png)
+
+### Whales
+On-chain whale tracking — live blockscan for large transfers and protocol interactions on Mantle.
+![Whales](whales.png)
+
+---
+
 ## Features
 
 ### 🤖 Autonomous Trading Agent
