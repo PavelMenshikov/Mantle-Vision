@@ -20,4 +20,4 @@ if (-not (Test-Path $EnvPath)) {
 & "pip" install -r (Join-Path $BackendPath "requirements.txt") --quiet
 
 Set-Location $BackendPath
-& "python" -m uvicorn app.main:app --host 0.0.0.0 --port $Port --reload
+& "python" -m uvicorn app.main:app --host 0.0.0.0 --port $Port

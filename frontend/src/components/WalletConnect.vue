@@ -2,10 +2,6 @@
 import { useWalletStore } from '@/stores/wallet'
 
 const wallet = useWalletStore()
-
-function handleToggle() {
-  wallet.toggleMode()
-}
 </script>
 
 <template>

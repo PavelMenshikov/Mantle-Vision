@@ -24,7 +24,7 @@ async def get_portfolio():
 
 @router.get("/pnl", response_model=list[PnLDataPoint])
 async def get_pnl_chart():
-    return [PnLDataPoint(**p) for p in db.get_pnl_history()]
+    return [PnLDataPoint(**p) for p in await db.call(db.get_pnl_history)]
 
 
 @router.get("/history", response_model=list[PaperTrade])
@@ -32,7 +32,7 @@ async def get_trade_history(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
-    return [_row_to_trade(t) for t in db.get_trades(limit=limit, offset=offset)]
+    return [_row_to_trade(t) for t in await db.call(db.get_trades, limit=limit, offset=offset)]
 
 
 @router.get("/stats", response_model=dict)
@@ -57,7 +57,7 @@ async def execute_trade(
         raise HTTPException(status_code=400, detail="Invalid amount")
 
     trade = engine.execute_trade(trade_type, asset, parsed_amount)
-    db.save_trade(trade)
+    await db.call(db.save_trade, trade)
     await telegram.notify_trade(trade.model_dump(mode="json"))
     return trade
 

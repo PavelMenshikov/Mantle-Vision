@@ -8,6 +8,8 @@ from typing import Any, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.database import db
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth/telegram", tags=["telegram_auth"])
@@ -73,5 +75,8 @@ def verify_connection_code(code: str, chat_id: str, username: str = "") -> bool:
     data["chat_id"] = chat_id
     data["username"] = username
     _connected_chats[chat_id] = code
+
+    db.ensure_user(f"tg:{username}", "telegram", f"@{username}")
+
     logger.info(f"Telegram connected: chat={chat_id} user={username} code={code}")
     return True

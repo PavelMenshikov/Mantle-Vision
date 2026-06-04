@@ -1,17 +1,26 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { LayoutDashboard, Zap, List, Users, Settings } from 'lucide-vue-next'
 import faviconUrl from '@/assets/favicon.png'
 
 const route = useRoute()
 const router = useRouter()
 
+const iconMap = {
+  Dashboard: LayoutDashboard,
+  Signals: Zap,
+  Transactions: List,
+  Whales: Users,
+  Settings,
+}
+
 const navItems = [
-  { name: 'Dashboard', path: '/', icon: '◈' },
-  { name: 'Signals', path: '/signals', icon: '⚡' },
-  { name: 'Portfolio', path: '/portfolio', icon: '◆' },
-  { name: 'Whales', path: '/whales', icon: '🐋' },
-  { name: 'Settings', path: '/settings', icon: '⚙' },
+  { name: 'Dashboard', path: '/', icon: 'Dashboard' },
+  { name: 'Signals', path: '/signals', icon: 'Signals' },
+  { name: 'Transactions', path: '/transactions', icon: 'Transactions' },
+  { name: 'Whales', path: '/whales', icon: 'Whales' },
+  { name: 'Settings', path: '/settings', icon: 'Settings' },
 ]
 
 function isActive(path) {
@@ -43,7 +52,7 @@ function navigate(path) {
             : 'text-cyber-muted hover:text-cyber-text hover:bg-white/5'
         ]"
       >
-        <span class="relative z-10">{{ item.icon }}</span>
+        <component :is="iconMap[item.icon]" class="relative z-10 w-4 h-4" />
         <div
           v-if="isActive(item.path)"
           class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-cyber-accent rounded-r-full shadow-neon-green"

@@ -1,8 +1,11 @@
 <script setup>
+import { onUnmounted } from 'vue'
 import { useTelegramStore } from '@/stores/telegram'
 import NeonButton from '@/components/NeonButton.vue'
 
 const tg = useTelegramStore()
+
+onUnmounted(() => tg.stopPolling())
 </script>
 
 <template>

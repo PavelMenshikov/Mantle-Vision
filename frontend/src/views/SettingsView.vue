@@ -2,14 +2,15 @@
 import { computed } from 'vue'
 import GlassCard from '@/components/GlassCard.vue'
 import TelegramConnect from '@/components/TelegramConnect.vue'
+import { Globe, Satellite, Settings } from 'lucide-vue-next'
 import { useThemeStore } from '@/stores/theme'
 
 const theme = useThemeStore()
 
 const themeOptions = [
-  { id: 'dark', label: '✦ Dark', accent: 'text-cyber-accent' },
-  { id: 'silver', label: '◈ Silver', accent: 'text-cyber-electric' },
-  { id: 'light', label: '○ Light', accent: 'text-cyber-warning' },
+  { id: 'dark', label: 'Dark', accent: 'text-cyber-accent' },
+  { id: 'silver', label: 'Silver', accent: 'text-cyber-electric' },
+  { id: 'light', label: 'Light', accent: 'text-cyber-warning' },
 ]
 
 const networkInfo = {
@@ -30,7 +31,10 @@ const networkInfo = {
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <GlassCard accent="amber">
-        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4">🌐 Network</h3>
+        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4 flex items-center gap-2">
+          <Globe class="w-4 h-4 text-cyber-warning" />
+          Network
+        </h3>
         <div class="space-y-3">
           <div v-for="(value, key) in networkInfo" :key="key" class="flex items-center justify-between py-1.5">
             <span class="text-xs text-cyber-muted font-mono capitalize">{{ key.replace(/([A-Z])/g, ' $1') }}</span>
@@ -40,7 +44,10 @@ const networkInfo = {
       </GlassCard>
 
       <GlassCard accent="electric">
-        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4">📡 Telegram</h3>
+        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4 flex items-center gap-2">
+          <Satellite class="w-4 h-4 text-cyber-electric" />
+          Telegram
+        </h3>
         <p class="text-xs text-cyber-muted font-mono mb-4">
           Get real-time alerts on Telegram when anomalies, insider clusters, or risks are detected.
         </p>
@@ -48,7 +55,10 @@ const networkInfo = {
       </GlassCard>
 
       <GlassCard accent="red">
-        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4">⚙️ Preferences</h3>
+        <h3 class="text-sm font-display font-semibold text-cyber-text mb-4 flex items-center gap-2">
+          <Settings class="w-4 h-4 text-cyber-danger" />
+          Preferences
+        </h3>
         <div class="space-y-4">
           <div>
             <div class="text-sm text-cyber-text mb-2">Theme</div>

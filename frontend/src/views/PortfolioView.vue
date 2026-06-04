@@ -1,244 +1,198 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
-import PortfolioChart from '@/components/PortfolioChart.vue'
-import { usePortfolioStore } from '@/stores/portfolio'
-import { useWalletStore } from '@/stores/wallet'
+import TransactionStream from '@/components/TransactionStream.vue'
+import { RefreshCw, Globe, Cpu, Activity, AlertTriangle, ExternalLink } from 'lucide-vue-next'
 
-const portfolio = usePortfolioStore()
-const wallet = useWalletStore()
+const txs = ref([])
+const loading = ref(true)
+const flaggedCount = ref(0)
+const flaggedOnly = ref(false)
+let abortCtrl = null
+let pollTimer = null
 
-const tradeType = ref('buy')
-const tradeAsset = ref('MNT')
-const tradeAmount = ref('')
-const tradePrice = ref('')
-const notification = ref('')
-
-const assets = ['MNT', 'mETH', 'USDC', 'USDY']
-
-const currentPrices = {
-  MNT: 0.89,
-  mETH: 2912,
-  USDC: 1.00,
-  USDY: 1.084
+async function fetchTxs() {
+  if (abortCtrl) abortCtrl.abort()
+  abortCtrl = new AbortController()
+  try {
+    const res = await fetch('/api/txs/recent?limit=50', { signal: abortCtrl.signal })
+    if (res.ok) {
+      const data = await res.json()
+      txs.value = data
+      flaggedCount.value = data.filter(t => t.flagged || t.anomaly_score > 0.5).length
+    }
+  } catch {}
+  loading.value = false
 }
 
-const totalValueFormatted = computed(() => {
-  return '$' + portfolio.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const displayTxs = computed(() => {
+  if (!flaggedOnly.value) return txs.value
+  return txs.value.filter(t => t.flagged || t.anomaly_score > 0.5)
 })
 
-const pnlColor = computed(() => portfolio.totalPnl >= 0 ? 'text-cyber-accent' : 'text-cyber-danger')
-const pnlSign = computed(() => portfolio.totalPnl >= 0 ? '+' : '')
-
-const recentTrades = computed(() =>
-  portfolio.history.slice(-10).reverse()
-)
-
-onMounted(() => {
-  portfolio.fetchPortfolio()
-  portfolio.fetchHistory()
+onMounted(async () => {
+  await fetchTxs()
+  pollTimer = setInterval(fetchTxs, 20000)
 })
 
-function notify(msg) {
-  notification.value = msg
-  setTimeout(() => { notification.value = '' }, 3000)
+onUnmounted(() => {
+  if (abortCtrl) abortCtrl.abort()
+  if (pollTimer) clearInterval(pollTimer)
+})
+
+function addrShort(addr) {
+  if (!addr || addr.length < 10) return addr || '—'
+  return addr.slice(0, 6) + '...' + addr.slice(-4)
 }
 
-function handleTrade() {
-  const amount = parseFloat(tradeAmount.value)
-  const price = parseFloat(tradePrice.value) || currentPrices[tradeAsset.value]
-  if (!amount || amount <= 0) {
-    notify('⚠️ Enter an amount')
-    return
-  }
-
-  const result = portfolio.executeTrade({
-    type: tradeType.value,
-    asset: tradeAsset.value,
-    amount,
-    price
-  })
-
-  if (result.success) {
-    const action = tradeType.value === 'buy' ? 'Bought' : 'Sold'
-    notify(`✅ ${action} ${amount} ${tradeAsset.value}`)
-    tradeAmount.value = ''
-    tradePrice.value = ''
-  } else {
-    notify(`❌ ${result.error}`)
-  }
+function txUrl(hash) {
+  return `https://mantlescan.info/tx/${hash}`
 }
 
-function fillPrice() {
-  tradePrice.value = currentPrices[tradeAsset.value]?.toString() || ''
+function addrUrl(addr) {
+  return `https://mantlescan.info/address/${addr}`
+}
+
+function formatTime(ts) {
+  if (!ts) return '—'
+  const d = new Date(ts * 1000)
+  return d.toLocaleTimeString()
+}
+
+function formatEth(val) {
+  if (val >= 1000) return val.toFixed(1)
+  if (val >= 1) return val.toFixed(3)
+  if (val >= 0.001) return val.toFixed(5)
+  return '<0.001'
 }
 </script>
 
 <template>
   <div class="space-y-6 animate-fade-in">
-    <div>
-      <h2 class="text-2xl font-display font-bold text-gradient">Portfolio</h2>
-      <p class="text-sm text-cyber-muted font-mono mt-1">
-        {{ wallet.isDemo ? 'Paper trading portfolio' : 'Real portfolio' }}
-      </p>
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h2 class="text-2xl font-display font-bold text-gradient">Transaction Stream</h2>
+        <p class="text-sm text-cyber-muted font-mono mt-1">Real-time Mantle blockchain activity with AI anomaly detection</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex glass !p-1 rounded-xl gap-1">
+          <button
+            @click="flaggedOnly = false"
+            :class="['px-3 py-1.5 text-xs font-mono rounded-lg transition-all', !flaggedOnly ? 'bg-cyber-accent/20 text-cyber-accent' : 'text-cyber-muted hover:text-cyber-text']"
+          >
+            All
+          </button>
+          <button
+            @click="flaggedOnly = true"
+            :class="['px-3 py-1.5 text-xs font-mono rounded-lg transition-all flex items-center gap-1', flaggedOnly ? 'bg-cyber-danger/20 text-cyber-danger' : 'text-cyber-muted hover:text-cyber-text']"
+          >
+            <AlertTriangle class="w-3 h-3" />
+            Flagged
+            <span v-if="flaggedCount" class="text-[10px]">({{ flaggedCount }})</span>
+          </button>
+        </div>
+        <NeonButton variant="secondary" size="sm" @click="fetchTxs">
+          <RefreshCw class="w-4 h-4" />
+        </NeonButton>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
-      <GlassCard accent="green" class="lg:col-span-2">
-        <div class="text-xs text-cyber-muted font-mono mb-1">Total Value</div>
-        <div class="text-3xl font-display font-bold text-cyber-text">{{ totalValueFormatted }}</div>
-        <div :class="['text-sm font-mono mt-1', pnlColor]">
-          {{ pnlSign }}{{ portfolio.totalPnl.toFixed(2) }} ({{ pnlSign }}{{ portfolio.pnlPercent }}%)
+      <GlassCard accent="green">
+        <div class="flex items-center gap-2 mb-1">
+          <Globe class="w-4 h-4 text-cyber-accent" />
+          <div class="text-xs text-cyber-muted font-mono">Chain</div>
         </div>
+        <div class="text-2xl font-display font-bold text-cyber-text">Mantle</div>
+        <div class="text-xs text-cyber-muted font-mono mt-1">Mainnet</div>
       </GlassCard>
-
       <GlassCard accent="blue">
-        <div class="text-xs text-cyber-muted font-mono mb-1">Available Balance</div>
-        <div class="text-2xl font-display font-bold text-cyber-text">
-          ${{ portfolio.demoBalance.toFixed(2) }}
+        <div class="flex items-center gap-2 mb-1">
+          <Cpu class="w-4 h-4 text-cyber-electric" />
+          <div class="text-xs text-cyber-muted font-mono">Block</div>
         </div>
-        <div class="text-xs text-cyber-muted font-mono mt-1">{{ wallet.isDemo ? 'Demo' : 'Real' }} funds</div>
+        <div class="text-2xl font-display font-bold text-cyber-text" v-if="txs.length">#{{ txs[0].block }}</div>
+        <div class="text-2xl font-display font-bold text-cyber-text" v-else>—</div>
+        <div class="text-xs text-cyber-muted font-mono mt-1">Latest</div>
       </GlassCard>
-
       <GlassCard accent="amber">
-        <div class="text-xs text-cyber-muted font-mono mb-1">Open Positions</div>
-        <div class="text-2xl font-display font-bold text-cyber-text">{{ portfolio.positionCount }}</div>
-        <div class="text-xs text-cyber-muted font-mono mt-1">Active trades</div>
+        <div class="flex items-center gap-2 mb-1">
+          <Activity class="w-4 h-4 text-cyber-warning" />
+          <div class="text-xs text-cyber-muted font-mono">Streaming</div>
+        </div>
+        <div class="text-2xl font-display font-bold text-cyber-text">{{ txs.length }}</div>
+        <div class="text-xs text-cyber-muted font-mono mt-1">Recent transactions</div>
+      </GlassCard>
+      <GlassCard accent="red">
+        <div class="flex items-center gap-2 mb-1">
+          <AlertTriangle class="w-4 h-4 text-cyber-danger" />
+          <div class="text-xs text-cyber-muted font-mono">Anomalies</div>
+        </div>
+        <div class="text-2xl font-display font-bold text-cyber-danger">{{ flaggedCount }}</div>
+        <div class="text-xs text-cyber-muted font-mono mt-1">AI-flagged</div>
       </GlassCard>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-2 space-y-4">
-        <GlassCard accent="green">
-          <PortfolioChart :data="portfolio.history" :height="300" />
-        </GlassCard>
-
-        <GlassCard>
-          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3">Positions</h3>
-          <div v-if="portfolio.positions.length" class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="text-xs text-cyber-muted font-mono border-b border-white/5">
-                  <th class="text-left pb-2 font-medium">Asset</th>
-                  <th class="text-right pb-2 font-medium">Amount</th>
-                  <th class="text-right pb-2 font-medium">Entry</th>
-                  <th class="text-right pb-2 font-medium">Current</th>
-                  <th class="text-right pb-2 font-medium">P&L</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="pos in portfolio.positions" :key="pos.id" class="border-b border-white/5">
-                  <td class="py-3 font-mono font-semibold">{{ pos.asset }}</td>
-                  <td class="py-3 text-right font-mono">{{ pos.amount }}</td>
-                  <td class="py-3 text-right font-mono">${{ pos.entryPrice.toFixed(4) }}</td>
-                  <td class="py-3 text-right font-mono">${{ pos.currentPrice.toFixed(4) }}</td>
-                  <td :class="['py-3 text-right font-mono', pos.pnl >= 0 ? 'text-cyber-accent' : 'text-cyber-danger']">
-                    {{ pos.pnl >= 0 ? '+' : '' }}{{ pos.pnl.toFixed(2) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-else class="text-center py-6 text-cyber-muted text-sm font-mono">
-            No open positions
-          </div>
-        </GlassCard>
-
-        <GlassCard v-if="recentTrades.length">
-          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3">Trade History</h3>
-          <div class="space-y-2">
-            <div v-for="(trade, i) in recentTrades" :key="i" class="flex items-center justify-between text-xs font-mono py-1.5 border-b border-white/5 last:border-0">
-              <span class="text-cyber-muted">{{ new Date(trade.date).toLocaleDateString() }}</span>
-              <span class="text-cyber-text">${{ trade.value.toFixed(2) }}</span>
-            </div>
-          </div>
-        </GlassCard>
-      </div>
-
-      <div class="relative">
-        <div
-          v-if="notification"
-          class="absolute -top-2 left-0 right-0 z-10 px-4 py-2 rounded-xl text-xs font-mono font-medium text-center animate-slide-up"
-          :class="notification.startsWith('✅') ? 'bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/30' : 'bg-cyber-danger/20 text-cyber-danger border border-cyber-danger/30'"
-        >
-          {{ notification }}
-        </div>
-        <GlassCard accent="green">
-          <h3 class="text-sm font-display font-semibold text-cyber-text mb-4">Trade</h3>
-
-          <div class="flex glass !p-1 rounded-xl mb-4 gap-1">
-            <button
-              v-for="t in ['buy', 'sell']"
-              :key="t"
-              @click="tradeType = t"
+    <GlassCard>
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs font-mono">
+          <thead>
+            <tr class="text-cyber-muted border-b border-white/5">
+              <th class="text-left pb-2 font-medium w-6"></th>
+              <th class="text-left pb-2 font-medium">Time</th>
+              <th class="text-left pb-2 font-medium">Block</th>
+              <th class="text-left pb-2 font-medium">From</th>
+              <th class="text-left pb-2 font-medium"></th>
+              <th class="text-left pb-2 font-medium">To</th>
+              <th class="text-right pb-2 font-medium">Value (MNT)</th>
+              <th class="text-right pb-2 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="tx in displayTxs" :key="tx.hash"
               :class="[
-                'flex-1 px-3 py-1.5 text-xs font-mono font-medium rounded-lg transition-all duration-200 uppercase',
-                tradeType === t
-                  ? t === 'buy' ? 'bg-cyber-accent/20 text-cyber-accent' : 'bg-cyber-danger/20 text-cyber-danger'
-                  : 'text-cyber-muted hover:text-cyber-text'
-              ]"
-            >
-              {{ t }}
-            </button>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs text-cyber-muted font-mono block mb-1">Asset</label>
-              <select
-                v-model="tradeAsset"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
-              >
-                <option v-for="a in assets" :key="a" :value="a">{{ a }}</option>
-              </select>
-            </div>
-
-            <div>
-              <label class="text-xs text-cyber-muted font-mono block mb-1">Price</label>
-              <div class="flex gap-2">
-                <input
-                  v-model="tradePrice"
-                  type="number"
-                  step="0.0001"
-                  placeholder="0.00"
-                  class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
-                />
-                <button @click="fillPrice" class="px-2 py-1 rounded-lg bg-white/5 text-[10px] text-cyber-muted hover:text-cyber-text font-mono">
-                  Market
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="text-xs text-cyber-muted font-mono block mb-1">Amount</label>
-              <input
-                v-model="tradeAmount"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
-              />
-            </div>
-
-            <div v-if="tradeAmount && tradePrice" class="glass !p-3 rounded-xl text-xs font-mono">
-              <div class="flex justify-between text-cyber-muted">
-                <span>Total</span>
-                <span class="text-cyber-text">${{ (parseFloat(tradeAmount || 0) * parseFloat(tradePrice || 0)).toFixed(2) }}</span>
-              </div>
-            </div>
-
-            <NeonButton
-              :variant="tradeType === 'buy' ? 'primary' : 'danger'"
-              class="w-full"
-              @click="handleTrade"
-            >
-              {{ tradeType === 'buy' ? 'Buy' : 'Sell' }} {{ tradeAsset }}
-            </NeonButton>
-          </div>
-        </GlassCard>
+                'border-b border-white/5 transition-colors',
+                tx.flagged || tx.anomaly_score > 0.5 ? 'bg-cyber-danger/[0.02]' : 'hover:bg-white/[0.02]'
+              ]">
+              <td class="py-2">
+                <AlertTriangle v-if="tx.flagged || tx.anomaly_score > 0.5" class="w-3 h-3 text-cyber-danger" />
+              </td>
+              <td class="py-2 text-cyber-muted whitespace-nowrap">{{ formatTime(tx.timestamp) }}</td>
+              <td class="py-2 text-cyber-muted font-mono">{{ tx.block }}</td>
+              <td class="py-2">
+                <a :href="addrUrl(tx.from_)" target="_blank"
+                  class="text-cyber-text hover:text-cyber-accent transition-colors">
+                  {{ addrShort(tx.from_) }}
+                </a>
+              </td>
+              <td class="py-2 text-cyber-muted/30">→</td>
+              <td class="py-2">
+                <a v-if="tx.to" :href="addrUrl(tx.to)" target="_blank"
+                  class="text-cyber-text hover:text-cyber-accent transition-colors">
+                  {{ addrShort(tx.to) }}
+                </a>
+                <span v-else class="text-cyber-muted">deploy</span>
+              </td>
+              <td class="py-2 text-right">
+                <span v-if="tx.value_eth > 0" class="text-cyber-accent font-semibold">
+                  {{ formatEth(tx.value_eth) }}
+                </span>
+                <span v-else class="text-cyber-muted">—</span>
+              </td>
+              <td class="py-2 text-right">
+                <a :href="txUrl(tx.hash)" target="_blank" class="text-cyber-muted/40 hover:text-cyber-accent transition-colors">
+                  <ExternalLink class="w-3 h-3" />
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
+      <div v-if="!displayTxs.length && !loading" class="text-center py-8 text-cyber-muted text-sm font-mono">
+        <span v-if="flaggedOnly">No flagged transactions</span>
+        <span v-else>Waiting for transactions...</span>
+      </div>
+    </GlassCard>
   </div>
 </template>
-

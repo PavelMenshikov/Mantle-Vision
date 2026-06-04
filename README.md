@@ -1,4 +1,4 @@
-![Mantle Vision Banner](logo.png)
+![Mantle Vision Banner](docs/images/logo.png)
 
 # Mantle Vision
 
@@ -46,15 +46,15 @@ Mantle Vision is an autonomous AI agent that monitors the Mantle blockchain in r
 
 ### Dashboard
 Real-time portfolio value, P&L, active signals, and network status — all in one place.
-![Dashboard](dashboard.png)
+![Dashboard](docs/images/dashboard.png)
 
 ### Signals
 AI-generated trading signals with direction, confidence score, and reasoning from each analysis cycle.
-![Signals](signals.png)
+![Signals](docs/images/signals.png)
 
 ### Whales
 On-chain whale tracking — live blockscan for large transfers and protocol interactions on Mantle.
-![Whales](whales.png)
+![Whales](docs/images/whales.png)
 
 ---
 
@@ -239,31 +239,44 @@ See [`.env.example`](.env.example) for the complete list.
 
 ## Roadmap
 
-### Phase 1 — Core Architecture (in progress)
+### Phase 1 — Core Architecture ✅
 - [x] Real-time on-chain scanner (Mantle blocks, whale transfers, protocol interactions)
 - [x] 3-provider AI fallback chain (OpenAI → Groq → AltLLM)
-- [x] Paper trading engine ($10K virtual capital)
-- [x] Live dashboard + Telegram alerts
-- [ ] **Strategy layer** — RSI, Volume Anomaly, Nostalgia patterns
-- [ ] **WhaleScore** — mathematical scoring of whale activity
-- [ ] **AI arbiter** — strategies compute for free, AI only says YES/NO
-- [ ] **Database (SQLite)** — persistent history for all users
+- [x] Strategy layer — RSI, Volume Anomaly, Nostalgia patterns
+- [x] WhaleScore — mathematical scoring of wallet activity
+- [x] AI arbiter — strategies compute, AI says YES/NO
+- [x] Database (SQLite) — persistent history
 
-### Phase 2 — Infrastructure
-- [ ] Docker: single `docker-compose up`
-- [ ] MetaMask wallet auth (browser-based, no .env keys)
-- [ ] UI fixes: theme toggle, refresh, reconnect
+### Phase 1b — Intelligence Layer ✅
+- [x] Wallet Cluster Analyzer — граф связей, инсайдерские кластеры
+- [x] Anomaly Detector (Isolation Forest) — аномальное поведение
+- [x] Wallet Reputation Engine — scoring (sentinel, cluster, reputation)
+- [x] Knowledge Base + AI context
+- [x] Telegram dual mode — аналитика / рекомендации
 
-### Phase 3 — Sponsor APIs (awaiting Twitter restore)
-- [ ] Nansen AI — whale intelligence
-- [ ] Elfa AI — social sentiment
-- [ ] Surf AI — additional AI compute
-- [ ] Orbit AI — agent tooling
+### Phase 2 — Wallet Intelligence ✅
+- [x] Wallet Analysis API — risk score, tags, cluster, signals
+- [x] Wallet Intelligence UI — full profile page with search
+- [x] Funding Tree — граф связей (кто кому переводил)
+- [x] AI Wallet Summary — AltLLM-generated one-line description
+- [x] Per-user workspace — users, scoped watchlists
+- [x] Transaction Stream — instead of portfolio
+- [x] Anomaly highlighting — AI-flagged suspicious txs
+- [x] Lucide icons — all emoji replaced with SVG
+- [ ] Live wallet feed — WebSocket subscription
+- [ ] Force-directed graph — D3 cluster visualization
+
+### Phase 3 — Sponsor APIs
+- [ ] Nansen AI ($7K credits) — whale intelligence
+- [ ] Elfa AI ($36K credits) — social sentiment
+- [ ] Surf AI ($30K credits) — AI compute
+- [ ] Orbit AI ($30K credits) — agent tools
 
 ### Phase 4 — Production
 - [ ] Real DEX trading on Mantle (user's own wallet)
+- [ ] Telegram alerts on watched wallet activity
+- [ ] Wallet report export
 - [ ] Backtesting dashboard
-- [ ] Strategy leaderboard
 
 ---
 

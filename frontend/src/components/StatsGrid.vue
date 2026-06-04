@@ -1,15 +1,17 @@
 <script setup>
+import { h } from 'vue'
 import GlassCard from './GlassCard.vue'
+import { Zap, Users, DollarSign, Globe } from 'lucide-vue-next'
 
 const props = defineProps({
   stats: { type: Array, required: true }
 })
 
-const icons = {
-  signals: '⚡',
-  whales: '🐋',
-  pnl: '◆',
-  network: '🔗'
+const iconMap = {
+  signals: Zap,
+  whales: Users,
+  pnl: DollarSign,
+  network: Globe,
 }
 </script>
 
@@ -29,7 +31,7 @@ const icons = {
           stat.accent === 'red' ? 'gradient-red' : '',
           stat.accent === 'amber' ? 'gradient-amber' : ''
         ]">
-          {{ icons[stat.icon] || '◈' }}
+          <component :is="iconMap[stat.icon] || Globe" class="w-5 h-5" />
         </div>
         <div>
           <div class="text-lg font-display font-bold">{{ stat.value }}</div>

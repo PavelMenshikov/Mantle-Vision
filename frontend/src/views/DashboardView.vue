@@ -1,28 +1,32 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import StatsGrid from '@/components/StatsGrid.vue'
 import SignalCard from '@/components/SignalCard.vue'
-import PortfolioChart from '@/components/PortfolioChart.vue'
+import TransactionStream from '@/components/TransactionStream.vue'
 import TokenPrice from '@/components/TokenPrice.vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
+import { RefreshCw, Zap, Eye } from 'lucide-vue-next'
 import { useSignalsStore } from '@/stores/signals'
-import { usePortfolioStore } from '@/stores/portfolio'
 
 const signals = useSignalsStore()
-const portfolio = usePortfolioStore()
 
 const scannerStatus = ref(null)
+let abortCtrl = null
 
 onMounted(() => {
-  portfolio.fetchPortfolio()
-  portfolio.fetchHistory()
   fetchScannerStatus()
 })
 
+onUnmounted(() => {
+  if (abortCtrl) abortCtrl.abort()
+})
+
 async function fetchScannerStatus() {
+  if (abortCtrl) abortCtrl.abort()
+  abortCtrl = new AbortController()
   try {
-    const res = await fetch('/api/scanner/status')
+    const res = await fetch('/api/scanner/status', { signal: abortCtrl.signal })
     scannerStatus.value = await res.json()
   } catch {}
 }
@@ -30,8 +34,8 @@ async function fetchScannerStatus() {
 const stats = computed(() => [
   { label: 'Total Signals', value: signals.signalCount, icon: 'signals', accent: 'green', change: 12 },
   { label: 'Active Whales', value: '—', icon: 'whales', accent: 'blue', change: 0 },
-  { label: 'Portfolio P&L', value: portfolio.totalPnl === 0 ? '—' : '$' + portfolio.totalPnl.toFixed(2), icon: 'pnl', accent: portfolio.totalPnl >= 0 ? 'green' : 'red', change: portfolio.pnlPercent },
-  { label: 'Network', value: 'Mantle', icon: 'network', accent: 'amber', change: 99.9 },
+  { label: 'Network Uptime', value: '99.9%', icon: 'network', accent: 'amber', change: 0 },
+  { label: 'Scanner Status', value: scannerStatus.value?.scanner_active ? 'Active' : '—', icon: 'signals', accent: scannerStatus.value?.scanner_active ? 'green' : 'red', change: 0 },
 ])
 
 function formatTime(ts) {
@@ -48,7 +52,7 @@ function formatTime(ts) {
         <p class="text-sm text-cyber-muted font-mono mt-1">Real-time on-chain intelligence overview</p>
       </div>
       <NeonButton variant="primary" size="sm" @click="signals.fetchSignals(); fetchScannerStatus()">
-        ⟳ Refresh
+        <RefreshCw class="w-4 h-4" />
       </NeonButton>
     </div>
 
@@ -57,12 +61,20 @@ function formatTime(ts) {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div class="lg:col-span-2 space-y-4">
         <GlassCard accent="green">
-          <PortfolioChart :data="portfolio.history" :height="250" />
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-display font-semibold text-cyber-text flex items-center gap-2">
+              <Zap class="w-4 h-4 text-cyber-accent" />
+              Transaction Stream
+            </h3>
+            <span class="text-xs text-cyber-muted font-mono">Live</span>
+          </div>
+          <TransactionStream :height="250" />
         </GlassCard>
 
         <div>
           <h3 class="text-sm font-display font-semibold text-cyber-text mb-3 flex items-center gap-2">
-            ⚡ Recent Signals
+            <Zap class="w-4 h-4 text-cyber-accent" />
+            Recent Signals
             <span class="text-xs text-cyber-muted font-mono font-normal">({{ signals.recentSignals.length }})</span>
           </h3>
           <div v-if="signals.recentSignals.length" class="space-y-3">
@@ -78,7 +90,10 @@ function formatTime(ts) {
         <TokenPrice />
 
         <GlassCard accent="blue">
-          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3">🔍 Scanner Status</h3>
+          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3 flex items-center gap-2">
+            <Eye class="w-4 h-4 text-cyber-electric" />
+            Scanner Status
+          </h3>
           <div v-if="scannerStatus" class="space-y-2 text-xs font-mono">
             <div class="flex justify-between">
               <span class="text-cyber-muted">Block</span>

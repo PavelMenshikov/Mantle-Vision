@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -27,6 +28,19 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(BACKEND_DIR, "mantle_vision.db")
 
+_loop_lock = threading.Lock()
+
+
+def _run_sync(fn, *args, **kwargs):
+    """Run a synchronous DB call off the event loop."""
+    try:
+        loop = asyncio.get_running_loop()
+        return asyncio.run_coroutine_threadsafe(
+            asyncio.to_thread(fn, *args, **kwargs), loop
+        ).result()
+    except RuntimeError:
+        return fn(*args, **kwargs)
+
 
 class Database:
     def __init__(self, db_path: str = DB_PATH) -> None:
@@ -36,15 +50,34 @@ class Database:
 
     def _get_conn(self) -> sqlite3.Connection:
         if not hasattr(self._local, "conn") or self._local.conn is None:
-            self._local.conn = sqlite3.connect(self.db_path)
+            self._local.conn = sqlite3.connect(self.db_path, timeout=10)
             self._local.conn.row_factory = sqlite3.Row
             self._local.conn.execute("PRAGMA journal_mode=WAL")
+            self._local.conn.execute("PRAGMA synchronous=NORMAL")
             self._local.conn.execute("PRAGMA foreign_keys=ON")
+            self._local.conn.execute("PRAGMA cache_size=-8000")
         return self._local.conn
 
     def _init_db(self) -> None:
         conn = self._get_conn()
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                auth_method TEXT NOT NULL,
+                display_name TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                last_seen TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS user_whales (
+                user_id TEXT NOT NULL,
+                address TEXT NOT NULL,
+                label TEXT DEFAULT '',
+                added_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, address),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+
             CREATE TABLE IF NOT EXISTS signals (
                 id TEXT PRIMARY KEY,
                 type TEXT NOT NULL,
@@ -162,16 +195,66 @@ class Database:
 
             CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC);
             CREATE INDEX IF NOT EXISTS idx_signals_direction ON signals(direction);
+            CREATE INDEX IF NOT EXISTS idx_signals_source ON signals(source);
+            CREATE INDEX IF NOT EXISTS idx_signals_confidence ON signals(confidence DESC);
+            CREATE INDEX IF NOT EXISTS idx_signals_type ON signals(type);
+            CREATE INDEX IF NOT EXISTS idx_signals_asset ON signals(asset);
             CREATE INDEX IF NOT EXISTS idx_trades_timestamp ON trades(timestamp DESC);
+            CREATE INDEX IF NOT EXISTS idx_trades_asset ON trades(asset);
             CREATE INDEX IF NOT EXISTS idx_pnl_timestamp ON pnl_snapshots(timestamp);
             CREATE INDEX IF NOT EXISTS idx_strategy_scores_signal ON strategy_scores(signal_id);
             CREATE INDEX IF NOT EXISTS idx_cluster_members_cluster ON cluster_members(cluster_id);
             CREATE INDEX IF NOT EXISTS idx_funding_links_from ON funding_links(from_address);
             CREATE INDEX IF NOT EXISTS idx_funding_links_to ON funding_links(to_address);
             CREATE INDEX IF NOT EXISTS idx_anomaly_patterns_type ON anomaly_patterns(pattern_type);
+            CREATE INDEX IF NOT EXISTS idx_whale_profiles_value ON whale_profiles(total_value DESC);
         """)
         conn.commit()
         logger.info(f"Database initialized: {self.db_path}")
+
+    # --- Users ---
+
+    def ensure_user(self, user_id: str, auth_method: str, display_name: str = "") -> None:
+        conn = self._get_conn()
+        conn.execute(
+            """INSERT OR IGNORE INTO users (id, auth_method, display_name, created_at, last_seen)
+               VALUES (?, ?, ?, ?, ?)""",
+            (user_id, auth_method, display_name, datetime.now(timezone.utc).isoformat(), datetime.now(timezone.utc).isoformat()),
+        )
+        conn.execute(
+            "UPDATE users SET last_seen = ? WHERE id = ?",
+            (datetime.now(timezone.utc).isoformat(), user_id),
+        )
+        conn.commit()
+
+    def get_user_whales(self, user_id: str) -> list[dict]:
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT address, label FROM user_whales WHERE user_id = ? ORDER BY added_at DESC",
+            (user_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def add_user_whale(self, user_id: str, address: str, label: str = "") -> bool:
+        conn = self._get_conn()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO user_whales (user_id, address, label, added_at) VALUES (?, ?, ?, ?)",
+                (user_id, address.lower(), label, datetime.now(timezone.utc).isoformat()),
+            )
+            conn.commit()
+            return True
+        except Exception:
+            return False
+
+    def remove_user_whale(self, user_id: str, address: str) -> bool:
+        conn = self._get_conn()
+        conn.execute(
+            "DELETE FROM user_whales WHERE user_id = ? AND address = ?",
+            (user_id, address.lower()),
+        )
+        conn.commit()
+        return conn.total_changes > 0
 
     # --- Signals ---
 
@@ -502,6 +585,11 @@ class Database:
         if hasattr(self._local, "conn") and self._local.conn:
             self._local.conn.close()
             self._local.conn = None
+
+    async def call(self, fn, *args, **kwargs):
+        """Run a DB method in a thread so it doesn't block the event loop."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, lambda: fn(*args, **kwargs))
 
 
 db = Database()

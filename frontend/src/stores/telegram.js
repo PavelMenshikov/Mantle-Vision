@@ -14,6 +14,9 @@ export const useTelegramStore = defineStore('telegram', () => {
     return `Send /connect ${code.value} to @${botUsername} in Telegram`
   })
 
+  let pollTimer = null
+  let pollAbort = null
+
   async function initConnection() {
     loading.value = true
     error.value = ''
@@ -29,13 +32,12 @@ export const useTelegramStore = defineStore('telegram', () => {
     }
   }
 
-  let pollTimer = null
-
   function startPolling() {
     stopPolling()
+    pollAbort = new AbortController()
     pollTimer = setInterval(async () => {
       try {
-        const res = await fetch('/api/auth/telegram/status')
+        const res = await fetch('/api/auth/telegram/status', { signal: pollAbort.signal })
         const data = await res.json()
         if (data.connected) {
           connected.value = true
@@ -43,7 +45,6 @@ export const useTelegramStore = defineStore('telegram', () => {
           stopPolling()
         }
       } catch {
-        // silent
       }
     }, 2000)
   }
@@ -52,6 +53,10 @@ export const useTelegramStore = defineStore('telegram', () => {
     if (pollTimer) {
       clearInterval(pollTimer)
       pollTimer = null
+    }
+    if (pollAbort) {
+      pollAbort.abort()
+      pollAbort = null
     }
   }
 

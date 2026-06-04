@@ -1,14 +1,18 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import WhaleCard from '@/components/WhaleCard.vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
+import { RefreshCw, X, Users, Plus, Search } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
 
+const auth = useAuthStore()
 const whales = ref([])
 const loading = ref(false)
 const showAddForm = ref(false)
 const newAddress = ref('')
 const newLabel = ref('')
+let abortCtrl = null
 
 const totalTracked = computed(() => whales.value.length)
 const totalVolume = computed(() => {
@@ -19,10 +23,19 @@ const totalVolume = computed(() => {
 })
 const highRiskCount = computed(() => whales.value.filter(w => (w.riskScore || 0) >= 0.7).length)
 
+function getUserParam() {
+  if (auth.method === 'telegram') return `tg:${auth.tgUsername}`
+  if (auth.address) return auth.address.toLowerCase()
+  return ''
+}
+
 async function fetchWhales() {
+  if (abortCtrl) abortCtrl.abort()
+  abortCtrl = new AbortController()
   loading.value = true
   try {
-    const res = await fetch('/api/whales')
+    const uid = getUserParam()
+    const res = await fetch(`/api/whales?user_id=${encodeURIComponent(uid)}`, { signal: abortCtrl.signal })
     whales.value = await res.json()
   } catch {
     whales.value = []
@@ -34,7 +47,8 @@ async function fetchWhales() {
 async function addWhale() {
   if (!newAddress.value) return
   try {
-    const res = await fetch(`/api/whales?address=${encodeURIComponent(newAddress.value)}&label=${encodeURIComponent(newLabel.value)}`, { method: 'POST' })
+    const uid = getUserParam()
+    const res = await fetch(`/api/whales?address=${encodeURIComponent(newAddress.value)}&label=${encodeURIComponent(newLabel.value)}&user_id=${encodeURIComponent(uid)}`, { method: 'POST' })
     if (res.ok) {
       const w = await res.json()
       whales.value.push(w)
@@ -47,12 +61,14 @@ async function addWhale() {
 
 async function removeWhale(address) {
   try {
-    await fetch(`/api/whales/${address}`, { method: 'DELETE' })
+    const uid = getUserParam()
+    await fetch(`/api/whales/${address}?user_id=${encodeURIComponent(uid)}`, { method: 'DELETE' })
     whales.value = whales.value.filter(w => w.address !== address)
   } catch {}
 }
 
 onMounted(fetchWhales)
+onUnmounted(() => { if (abortCtrl) abortCtrl.abort() })
 </script>
 
 <template>
@@ -63,9 +79,12 @@ onMounted(fetchWhales)
         <p class="text-sm text-cyber-muted font-mono mt-1">Monitor large wallet activity on Mantle</p>
       </div>
       <div class="flex gap-2">
-        <NeonButton variant="ghost" size="sm" @click="fetchWhales">⟳ Refresh</NeonButton>
+        <NeonButton variant="ghost" size="sm" @click="fetchWhales">
+          <RefreshCw class="w-4 h-4" />
+        </NeonButton>
         <NeonButton variant="primary" size="sm" @click="showAddForm = !showAddForm">
-          {{ showAddForm ? '✕ Cancel' : '+ Add Whale' }}
+          <template v-if="showAddForm"><X class="w-4 h-4" /> Cancel</template>
+          <template v-else><Plus class="w-4 h-4" /> Add Whale</template>
         </NeonButton>
       </div>
     </div>
@@ -107,9 +126,9 @@ onMounted(fetchWhales)
     </div>
 
     <div v-else-if="!whales.length" class="text-center py-12">
-      <div class="text-4xl mb-3 opacity-30">🐋</div>
+      <Search class="w-12 h-12 mx-auto mb-3 text-cyber-muted/20" />
       <p class="text-cyber-muted text-sm font-mono mb-4">No whales tracked yet. Add an address to start monitoring.</p>
-      <NeonButton variant="primary" size="sm" @click="showAddForm = true">+ Add First Whale</NeonButton>
+      <NeonButton variant="primary" size="sm" @click="showAddForm = true"><Plus class="w-4 h-4" /> Add First Whale</NeonButton>
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -119,7 +138,7 @@ onMounted(fetchWhales)
           @click="removeWhale(whale.address)"
           class="absolute top-2 right-2 text-[10px] text-cyber-danger/50 hover:text-cyber-danger font-mono transition-colors"
           title="Remove"
-        >✕</button>
+        ><X class="w-3 h-3" /></button>
       </div>
     </div>
   </div>

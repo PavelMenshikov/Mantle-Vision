@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, shallowRef, computed } from 'vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 
 export const useSignalsStore = defineStore('signals', () => {
-  const signals = ref([])
+  const signals = shallowRef([])
   const loading = ref(false)
   const error = ref(null)
   const ws = ref(null)
+  let lastFetch = 0
 
   const signalCount = computed(() => signals.value.length)
 
@@ -30,7 +31,8 @@ export const useSignalsStore = defineStore('signals', () => {
     }
   }
 
-  async function fetchSignals() {
+  async function fetchSignals(force = false) {
+    if (!force && Date.now() - lastFetch < 30000 && signals.value.length) return
     loading.value = true
     error.value = null
     try {
@@ -38,6 +40,7 @@ export const useSignalsStore = defineStore('signals', () => {
       if (!res.ok) throw new Error('Failed to fetch signals')
       const data = await res.json()
       signals.value = data.signals || data || []
+      lastFetch = Date.now()
     } catch (e) {
       error.value = e.message
     } finally {
@@ -45,19 +48,11 @@ export const useSignalsStore = defineStore('signals', () => {
     }
   }
 
-  async function generateSignal() {
-    try {
-      const res = await fetch('/api/signals/generate', { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.signal) addSignal(data.signal)
-      }
-    } catch {
-      // silently ignore — only real signals from backend
-    }
-  }
+  let wsConnected = false
 
   function connectWebSocket() {
+    if (wsConnected) return
+    wsConnected = true
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.host
     ws.value = useWebSocket(`${protocol}//${host}/ws`, {
@@ -76,6 +71,7 @@ export const useSignalsStore = defineStore('signals', () => {
   }
 
   function disconnectWebSocket() {
+    wsConnected = false
     if (ws.value) {
       ws.value.close()
       ws.value = null
@@ -85,7 +81,7 @@ export const useSignalsStore = defineStore('signals', () => {
   return {
     signals, loading, error,
     signalCount, highConfidenceSignals, highConfidenceCount, recentSignals,
-    fetchSignals, generateSignal, addSignal,
+    fetchSignals, addSignal,
     connectWebSocket, disconnectWebSocket
   }
 })

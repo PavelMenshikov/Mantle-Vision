@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import SignalCard from '@/components/SignalCard.vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
+import { RefreshCw, X, Search, Zap } from 'lucide-vue-next'
 import { useSignalsStore } from '@/stores/signals'
 
 const signals = useSignalsStore()
@@ -32,10 +33,10 @@ function clearFilters() {
 
 const typeOptions = [
   { value: 'all', label: 'All Types' },
-  { value: 'price_breakout', label: '📊 Price Breakout' },
-  { value: 'whale_move', label: '🐋 Whale Move' },
-  { value: 'liquidation', label: '💥 Liquidation' },
-  { value: 'sentiment', label: '🧠 Sentiment' },
+  { value: 'price_breakout', label: 'Price Breakout' },
+  { value: 'whale_move', label: 'Whale Move' },
+  { value: 'liquidation', label: 'Liquidation' },
+  { value: 'sentiment', label: 'Sentiment' },
 ]
 
 onMounted(() => {
@@ -58,10 +59,12 @@ onMounted(() => {
         <div class="glass !p-1.5 rounded-xl flex items-center gap-2">
           <span class="text-xs font-mono text-cyber-muted px-2">Total: {{ signals.signalCount }}</span>
           <span class="w-px h-4 bg-white/5"></span>
-          <span class="text-xs font-mono text-cyber-accent px-2">🔥 {{ signals.highConfidenceCount }} high confidence</span>
+          <span class="text-xs font-mono text-cyber-accent px-2 flex items-center gap-1">
+            <Zap class="w-3 h-3" /> {{ signals.highConfidenceCount }} high confidence
+          </span>
         </div>
-        <NeonButton variant="secondary" size="sm" @click="signals.fetchSignals()">
-          ⟳ Refresh
+        <NeonButton variant="secondary" size="sm" @click="signals.fetchSignals(true)">
+          <RefreshCw class="w-4 h-4" />
         </NeonButton>
       </div>
     </div>
@@ -87,7 +90,7 @@ onMounted(() => {
                 : 'text-cyber-muted hover:text-cyber-text'
             ]"
           >
-            {{ dir === 'all' ? 'All' : dir === 'bullish' ? '🚀 Bullish' : '📉 Bearish' }}
+            {{ dir === 'all' ? 'All' : dir === 'bullish' ? 'Bullish' : 'Bearish' }}
           </button>
         </div>
 
@@ -108,7 +111,7 @@ onMounted(() => {
           @click="clearFilters"
           class="text-xs text-cyber-muted hover:text-cyber-text transition-colors font-mono"
         >
-          ✕ Clear
+          <X class="w-3 h-3" /> Clear
         </button>
       </div>
     </GlassCard>
@@ -118,7 +121,7 @@ onMounted(() => {
     </div>
 
     <div v-else-if="filteredSignals.length === 0" class="text-center py-12">
-      <span class="text-4xl block mb-3">🔍</span>
+      <Search class="w-10 h-10 mx-auto mb-3 text-cyber-muted/30" />
       <p class="text-cyber-muted text-sm font-mono">No signals match your filters</p>
       <NeonButton variant="primary" size="sm" class="mt-3" @click="clearFilters">
         Clear Filters

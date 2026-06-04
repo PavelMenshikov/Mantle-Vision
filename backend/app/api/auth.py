@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.config import settings
+from app.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +51,11 @@ def _generate_nonce() -> str:
 
 def _create_message(address: str, nonce: str) -> str:
     return (
-        f"mantle-vision.ai хочет подтвердить владение кошельком\n\n"
-        f"Адрес: {address}\n"
+        f"Mantle Vision - Sign-In With Ethereum\n\n"
+        f"Address: {address}\n"
         f"Nonce: {nonce}\n"
-        f"Время: {datetime.now(timezone.utc).isoformat()}\n\n"
-        f"Подписывая это сообщение, вы подтверждаете вход в Mantle Vision AI Agent."
+        f"Time: {datetime.now(timezone.utc).isoformat()}\n\n"
+        f"By signing, you authenticate with Mantle Vision AI Agent."
     )
 
 
@@ -129,6 +130,8 @@ async def verify(req: VerifyRequest):
         "address": req.address,
         "created": time.time(),
     }
+
+    db.ensure_user(req.address.lower(), "metamask", req.address[:6] + "..." + req.address[-4:])
 
     exp = int(time.time()) + 86400 * 7
     return VerifyResponse(token=token, address=req.address, expires_at=exp)

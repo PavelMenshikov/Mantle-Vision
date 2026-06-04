@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import GlassCard from './GlassCard.vue'
+import { TrendingUp, TrendingDown, Minus, BarChart3, Users, AlertTriangle, Brain, Settings, Bot, ExternalLink } from 'lucide-vue-next'
 
 const props = defineProps({
   signal: { type: Object, required: true }
@@ -14,7 +15,7 @@ const isBearish = computed(() => {
   const d = props.signal.direction
   return d === 'bearish' || d === 'sell'
 })
-const emoji = computed(() => isBullish.value ? '🚀' : isBearish.value ? '📉' : '🟡')
+const directionIcon = computed(() => isBullish.value ? TrendingUp : isBearish.value ? TrendingDown : Minus)
 const accentColor = computed(() => isBullish.value ? 'green' : isBearish.value ? 'red' : 'amber')
 
 const typeLabels = {
@@ -26,13 +27,13 @@ const typeLabels = {
   combined_signal: 'AI Signal'
 }
 
-const typeIcon = {
-  price_breakout: '📊',
-  whale_move: '🐋',
-  liquidation: '💥',
-  sentiment: '🧠',
-  arbiter_decision: '⚙️',
-  combined_signal: '🤖'
+const typeIconMap = {
+  price_breakout: BarChart3,
+  whale_move: Users,
+  liquidation: AlertTriangle,
+  sentiment: Brain,
+  arbiter_decision: Settings,
+  combined_signal: Bot,
 }
 
 const timeAgo = computed(() => {
@@ -67,10 +68,10 @@ const reasoningHtml = computed(() => {
   <GlassCard :accent="accentColor" class="animate-fade-in">
     <div class="flex items-start gap-4">
       <div :class="[
-        'w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0',
+        'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
         isBullish ? 'gradient-green' : 'gradient-red'
       ]">
-        {{ emoji }}
+        <component :is="directionIcon" class="w-5 h-5" :class="isBullish ? 'text-cyber-accent' : isBearish ? 'text-cyber-danger' : 'text-cyber-warning'" />
       </div>
 
       <div class="flex-1 min-w-0">
@@ -82,8 +83,9 @@ const reasoningHtml = computed(() => {
           ]">
             {{ isBullish ? 'BULLISH' : isBearish ? 'BEARISH' : 'HOLD' }}
           </span>
-          <span class="px-2 py-0.5 rounded-md text-[10px] font-mono badge-blue">
-            {{ typeIcon[signal.type] }} {{ typeLabels[signal.type] || signal.type }}
+          <span class="px-2 py-0.5 rounded-md text-[10px] font-mono badge-blue inline-flex items-center gap-1">
+            <component :is="typeIconMap[signal.type] || Bot" class="w-3 h-3" />
+            {{ typeLabels[signal.type] || signal.type }}
           </span>
         </div>
 
@@ -103,7 +105,7 @@ const reasoningHtml = computed(() => {
             target="_blank"
             class="text-[10px] font-mono px-2 py-0.5 rounded-md badge-blue hover:bg-cyber-electric/20 transition-colors"
           >
-            🔗 Tx
+            <ExternalLink class="w-3 h-3" /> Tx
           </a>
 
           <div v-if="signal.confidence >= 0.80" class="flex items-center gap-1 text-[10px] text-cyber-accent font-mono ml-auto">

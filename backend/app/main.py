@@ -9,7 +9,7 @@ from typing import Any, AsyncGenerator
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, portfolio, signals, whales, telegram_auth, scanner
+from app.api import auth, portfolio, signals, whales, telegram_auth, scanner, transactions, wallet
 from app.api.ws import manager
 from app.config import settings
 from app.database import db
@@ -19,6 +19,11 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("watchfiles").setLevel(logging.WARNING)
+logging.getLogger("websockets").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +69,8 @@ async def signal_scanner() -> None:
     from app.services.price_feed import get_all_prices
     from app.services.trading_agent import trading_agent
 
+    _db = db
+
     while True:
         try:
             latest = mantle_scanner.get_latest_block()
@@ -71,13 +78,13 @@ async def signal_scanner() -> None:
                 await asyncio.sleep(30)
                 continue
 
-            from_block = max(0, latest - 20)
+            from_block = max(0, latest - 50)
             transfers = mantle_scanner.scan_large_transfers(from_block, latest, min_value_eth=10.0)
             protocol_events = mantle_scanner.scan_protocol_interactions(from_block, latest)
 
             # Cache prices
             prices = await get_all_prices()
-            db.save_prices(prices)
+            _db.save_prices(prices)
 
             # Trigger: whale movement or significant protocol event
             has_trigger = len(transfers) > 0 or len(protocol_events) > 0
@@ -98,7 +105,7 @@ async def signal_scanner() -> None:
                         whale_scores = await whale_scorer.compute_from_transfers(transfers)
                         primary = whale_scores.get(top_addr, {})
                         wallet_type = primary.get("wallet_type", "")
-                        cluster = db.find_cluster_by_address(top_addr)
+                        cluster = _db.find_cluster_by_address(top_addr)
                         if cluster:
                             wallet_context = {"cluster": cluster}
 
@@ -128,7 +135,7 @@ async def signal_scanner() -> None:
                     )
 
                     # Persist to database with all scores
-                    db.save_signal_with_scores(
+                    _db.save_signal_with_scores(
                         signal=arbiter_result,
                         rsi_score=strategy_results["rsi"].get("score"),
                         volume_score=strategy_results["volume"].get("score"),
@@ -177,30 +184,24 @@ async def signal_scanner() -> None:
                     else:
                         await telegram.notify_whale_alert(primary_whale_data)
 
-            # Anomaly detection on block data
-            from app.services.anomaly_detector import anomaly_detector
-            anomalies = await anomaly_detector.scan_block_anomalies(from_block, latest)
-            for anom in anomalies:
-                logger.info(f"Anomaly: {anom['wallet'][:10]}... score={anom['anomaly_score']:.2f}")
-                await telegram.notify_anomaly(anom)
+            # Heavy computation only when there's activity
+            if transfers:
+                from app.services.anomaly_detector import anomaly_detector
+                anomalies = await anomaly_detector.scan_block_anomalies(from_block, latest)
+                for anom in anomalies:
+                    logger.info(f"Anomaly: {anom['wallet'][:10]}... score={anom['anomaly_score']:.2f}")
+                    await telegram.notify_anomaly(anom)
 
-            # Insider cluster detection
-            from app.services.cluster_analyzer import cluster_analyzer
-            clusters = cluster_analyzer.detect_insider_cluster(transfers)
-            for cl in clusters:
-                logger.info(f"Insider cluster: {cl['size']} wallets, confidence={cl['confidence']:.2f}")
-                await telegram.notify_insider_cluster(cl)
-
-            # Record PnL snapshot every cycle
-            from app.services.paper_trading import paper_trading as pt
-            pnl = trading_agent.get_pnl()
-            portfolio_val = trading_agent.get_portfolio_value()
-            db.save_pnl_snapshot(pnl, portfolio_val, pt.capital)
+                from app.services.cluster_analyzer import cluster_analyzer
+                clusters = cluster_analyzer.detect_insider_cluster(transfers)
+                for cl in clusters:
+                    logger.info(f"Insider cluster: {cl['size']} wallets, confidence={cl['confidence']:.2f}")
+                    await telegram.notify_insider_cluster(cl)
 
         except Exception as e:
             logger.warning(f"Signal scanner error: {e}")
 
-        await asyncio.sleep(120)
+        await asyncio.sleep(180)
 
 
 @asynccontextmanager
@@ -258,7 +259,7 @@ async def health():
     return {
         "status": "ok",
         "blockchain": "mantle",
-        "mode": "demo" if settings.DEMO_MODE else "live",
+        "mode": "live" if not settings.DEMO_MODE else "demo",
     }
 
 
@@ -268,6 +269,8 @@ app.include_router(whales.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(portfolio.router, prefix="/api")
 app.include_router(telegram_auth.router, prefix="/api")
+app.include_router(transactions.router, prefix="/api")
+app.include_router(wallet.router, prefix="/api")
 
 
 @app.websocket("/ws")

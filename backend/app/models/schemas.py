@@ -12,6 +12,7 @@ class SignalDirection(str, Enum):
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
+    NEUTRAL = "neutral"
 
 
 class SignalSource(str, Enum):
@@ -105,3 +106,13 @@ class PnLDataPoint(BaseModel):
     timestamp: datetime
     pnl: float
     portfolioValue: float
+
+
+class MantleTx(BaseModel):
+    hash: str
+    from_: str = Field(alias="from")
+    to: str = ""
+    value_eth: float = 0.0
+    block: int = 0
+    timestamp: int = 0
+    method: str = "transfer"
