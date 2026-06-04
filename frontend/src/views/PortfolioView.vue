@@ -13,6 +13,7 @@ const tradeType = ref('buy')
 const tradeAsset = ref('MNT')
 const tradeAmount = ref('')
 const tradePrice = ref('')
+const notification = ref('')
 
 const assets = ['MNT', 'mETH', 'USDC', 'USDY']
 
@@ -39,10 +40,18 @@ onMounted(() => {
   portfolio.fetchHistory()
 })
 
+function notify(msg) {
+  notification.value = msg
+  setTimeout(() => { notification.value = '' }, 3000)
+}
+
 function handleTrade() {
   const amount = parseFloat(tradeAmount.value)
   const price = parseFloat(tradePrice.value) || currentPrices[tradeAsset.value]
-  if (!amount || amount <= 0) return
+  if (!amount || amount <= 0) {
+    notify('⚠️ Enter an amount')
+    return
+  }
 
   const result = portfolio.executeTrade({
     type: tradeType.value,
@@ -52,8 +61,12 @@ function handleTrade() {
   })
 
   if (result.success) {
+    const action = tradeType.value === 'buy' ? 'Bought' : 'Sold'
+    notify(`✅ ${action} ${amount} ${tradeAsset.value}`)
     tradeAmount.value = ''
     tradePrice.value = ''
+  } else {
+    notify(`❌ ${result.error}`)
   }
 }
 
@@ -74,7 +87,7 @@ function fillPrice() {
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
       <GlassCard accent="green" class="lg:col-span-2">
         <div class="text-xs text-cyber-muted font-mono mb-1">Total Value</div>
-        <div class="text-3xl font-display font-bold text-white">{{ totalValueFormatted }}</div>
+        <div class="text-3xl font-display font-bold text-cyber-text">{{ totalValueFormatted }}</div>
         <div :class="['text-sm font-mono mt-1', pnlColor]">
           {{ pnlSign }}{{ portfolio.totalPnl.toFixed(2) }} ({{ pnlSign }}{{ portfolio.pnlPercent }}%)
         </div>
@@ -82,7 +95,7 @@ function fillPrice() {
 
       <GlassCard accent="blue">
         <div class="text-xs text-cyber-muted font-mono mb-1">Available Balance</div>
-        <div class="text-2xl font-display font-bold text-white">
+        <div class="text-2xl font-display font-bold text-cyber-text">
           ${{ portfolio.demoBalance.toFixed(2) }}
         </div>
         <div class="text-xs text-cyber-muted font-mono mt-1">{{ wallet.isDemo ? 'Demo' : 'Real' }} funds</div>
@@ -90,7 +103,7 @@ function fillPrice() {
 
       <GlassCard accent="amber">
         <div class="text-xs text-cyber-muted font-mono mb-1">Open Positions</div>
-        <div class="text-2xl font-display font-bold text-white">{{ portfolio.positionCount }}</div>
+        <div class="text-2xl font-display font-bold text-cyber-text">{{ portfolio.positionCount }}</div>
         <div class="text-xs text-cyber-muted font-mono mt-1">Active trades</div>
       </GlassCard>
     </div>
@@ -102,7 +115,7 @@ function fillPrice() {
         </GlassCard>
 
         <GlassCard>
-          <h3 class="text-sm font-display font-semibold text-white mb-3">Positions</h3>
+          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3">Positions</h3>
           <div v-if="portfolio.positions.length" class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
@@ -133,19 +146,26 @@ function fillPrice() {
         </GlassCard>
 
         <GlassCard v-if="recentTrades.length">
-          <h3 class="text-sm font-display font-semibold text-white mb-3">Trade History</h3>
+          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3">Trade History</h3>
           <div class="space-y-2">
             <div v-for="(trade, i) in recentTrades" :key="i" class="flex items-center justify-between text-xs font-mono py-1.5 border-b border-white/5 last:border-0">
               <span class="text-cyber-muted">{{ new Date(trade.date).toLocaleDateString() }}</span>
-              <span class="text-white">${{ trade.value.toFixed(2) }}</span>
+              <span class="text-cyber-text">${{ trade.value.toFixed(2) }}</span>
             </div>
           </div>
         </GlassCard>
       </div>
 
-      <div>
+      <div class="relative">
+        <div
+          v-if="notification"
+          class="absolute -top-2 left-0 right-0 z-10 px-4 py-2 rounded-xl text-xs font-mono font-medium text-center animate-slide-up"
+          :class="notification.startsWith('✅') ? 'bg-cyber-accent/20 text-cyber-accent border border-cyber-accent/30' : 'bg-cyber-danger/20 text-cyber-danger border border-cyber-danger/30'"
+        >
+          {{ notification }}
+        </div>
         <GlassCard accent="green">
-          <h3 class="text-sm font-display font-semibold text-white mb-4">Trade</h3>
+          <h3 class="text-sm font-display font-semibold text-cyber-text mb-4">Trade</h3>
 
           <div class="flex glass !p-1 rounded-xl mb-4 gap-1">
             <button
@@ -156,7 +176,7 @@ function fillPrice() {
                 'flex-1 px-3 py-1.5 text-xs font-mono font-medium rounded-lg transition-all duration-200 uppercase',
                 tradeType === t
                   ? t === 'buy' ? 'bg-cyber-accent/20 text-cyber-accent' : 'bg-cyber-danger/20 text-cyber-danger'
-                  : 'text-cyber-muted hover:text-white'
+                  : 'text-cyber-muted hover:text-cyber-text'
               ]"
             >
               {{ t }}
@@ -168,7 +188,7 @@ function fillPrice() {
               <label class="text-xs text-cyber-muted font-mono block mb-1">Asset</label>
               <select
                 v-model="tradeAsset"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-cyber-accent/50 transition-colors"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
               >
                 <option v-for="a in assets" :key="a" :value="a">{{ a }}</option>
               </select>
@@ -182,9 +202,9 @@ function fillPrice() {
                   type="number"
                   step="0.0001"
                   placeholder="0.00"
-                  class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-cyber-accent/50 transition-colors"
+                  class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
                 />
-                <button @click="fillPrice" class="px-2 py-1 rounded-lg bg-white/5 text-[10px] text-cyber-muted hover:text-white font-mono">
+                <button @click="fillPrice" class="px-2 py-1 rounded-lg bg-white/5 text-[10px] text-cyber-muted hover:text-cyber-text font-mono">
                   Market
                 </button>
               </div>
@@ -197,14 +217,14 @@ function fillPrice() {
                 type="number"
                 step="0.01"
                 placeholder="0.00"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-cyber-accent/50 transition-colors"
+                class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
               />
             </div>
 
             <div v-if="tradeAmount && tradePrice" class="glass !p-3 rounded-xl text-xs font-mono">
               <div class="flex justify-between text-cyber-muted">
                 <span>Total</span>
-                <span class="text-white">${{ (parseFloat(tradeAmount || 0) * parseFloat(tradePrice || 0)).toFixed(2) }}</span>
+                <span class="text-cyber-text">${{ (parseFloat(tradeAmount || 0) * parseFloat(tradePrice || 0)).toFixed(2) }}</span>
               </div>
             </div>
 
@@ -221,3 +241,4 @@ function fillPrice() {
     </div>
   </div>
 </template>
+

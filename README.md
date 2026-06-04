@@ -1,3 +1,5 @@
+![Mantle Vision Banner](logo.png)
+
 # Mantle Vision
 
 **Autonomous AI Trading Agent for Mantle Network**

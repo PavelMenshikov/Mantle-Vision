@@ -78,3 +78,37 @@ async def get_all_prices() -> dict[str, float]:
             _cache.update(fresh)
             _cache_time = now
     return dict(_cache)
+
+
+async def get_market_snapshot() -> dict[str, dict]:
+    prices = await get_all_prices()
+    snapshot = {}
+    for symbol, price in prices.items():
+        snapshot[symbol] = {
+            "price_usd": price,
+            "change_24h": 0.0,
+            "volume_24h": 0.0,
+        }
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            cg_ids = list(MANTLE_ASSET_IDS.values())
+            resp = await client.get(
+                f"{COINGECKO_BASE}/simple/price",
+                params={
+                    "ids": ",".join(cg_ids),
+                    "vs_currencies": "usd",
+                    "include_24hr_change": "true",
+                    "include_24hr_vol": "true",
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                for symbol, cg_id in MANTLE_ASSET_IDS.items():
+                    if cg_id in data:
+                        snapshot[symbol]["change_24h"] = data[cg_id].get("usd_24h_change", 0)
+                        snapshot[symbol]["volume_24h"] = data[cg_id].get("usd_24h_vol", 0)
+    except Exception as e:
+        logger.debug(f"Market snapshot fetch failed: {e}")
+
+    return snapshot

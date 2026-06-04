@@ -15,7 +15,7 @@ const filteredSignals = computed(() => {
   return signals.signals.filter(s => {
     if (filterType.value !== 'all' && s.type !== filterType.value) return false
     if (filterDirection.value !== 'all' && s.direction !== filterDirection.value) return false
-    if (s.confidence < filterConfidence.value) return false
+    if (s.confidence < filterConfidence.value / 100) return false
     return true
   })
 })
@@ -60,9 +60,6 @@ onMounted(() => {
           <span class="w-px h-4 bg-white/5"></span>
           <span class="text-xs font-mono text-cyber-accent px-2">🔥 {{ signals.highConfidenceCount }} high confidence</span>
         </div>
-        <NeonButton variant="primary" size="sm" @click="signals.generateSignal()">
-          + Generate
-        </NeonButton>
         <NeonButton variant="secondary" size="sm" @click="signals.fetchSignals()">
           ⟳ Refresh
         </NeonButton>
@@ -73,7 +70,7 @@ onMounted(() => {
       <div class="flex flex-wrap items-center gap-3">
         <select
           v-model="filterType"
-          class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-gray-300 focus:outline-none focus:border-cyber-accent/50 transition-colors"
+          class="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-cyber-text-secondary focus:outline-none focus:border-cyber-accent/50 transition-colors"
         >
           <option v-for="opt in typeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
@@ -87,7 +84,7 @@ onMounted(() => {
               'px-3 py-1.5 text-xs font-mono rounded-lg transition-all duration-200',
               filterDirection === dir
                 ? dir === 'all' ? 'bg-white/10 text-white' : dir === 'bullish' ? 'bg-cyber-accent/20 text-cyber-accent' : 'bg-cyber-danger/20 text-cyber-danger'
-                : 'text-cyber-muted hover:text-white'
+                : 'text-cyber-muted hover:text-cyber-text'
             ]"
           >
             {{ dir === 'all' ? 'All' : dir === 'bullish' ? '🚀 Bullish' : '📉 Bearish' }}
@@ -109,7 +106,7 @@ onMounted(() => {
         <button
           v-if="hasFilters"
           @click="clearFilters"
-          class="text-xs text-cyber-muted hover:text-white transition-colors font-mono"
+          class="text-xs text-cyber-muted hover:text-cyber-text transition-colors font-mono"
         >
           ✕ Clear
         </button>
@@ -133,3 +130,4 @@ onMounted(() => {
     </div>
   </div>
 </template>
+

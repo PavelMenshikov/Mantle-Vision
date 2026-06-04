@@ -4,15 +4,14 @@ import WalletConnect from '@/components/WalletConnect.vue'
 import DemoWatermark from '@/components/DemoWatermark.vue'
 import { useWalletStore } from '@/stores/wallet'
 import { useSignalsStore } from '@/stores/signals'
+import { useThemeStore } from '@/stores/theme'
 import { onMounted } from 'vue'
 
 const wallet = useWalletStore()
 const signals = useSignalsStore()
+useThemeStore()
 
 onMounted(() => {
-  if (!wallet.connected) {
-    wallet.connect('demo')
-  }
   signals.fetchSignals()
   signals.connectWebSocket()
 })

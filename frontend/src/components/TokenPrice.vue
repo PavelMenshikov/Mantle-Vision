@@ -27,7 +27,7 @@ function fetchPrices() {
         <span class="text-lg">{{ token.icon }}</span>
         <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-semibold text-white">{{ token.symbol }}</span>
+            <span class="text-xs font-mono font-semibold text-cyber-text">{{ token.symbol }}</span>
             <span :class="[
               'text-[10px] font-mono font-medium px-1.5 py-0.5 rounded',
               token.change24h >= 0 ? 'text-cyber-accent bg-cyber-accent/10' : 'text-cyber-danger bg-cyber-danger/10'
@@ -43,3 +43,4 @@ function fetchPrices() {
     </GlassCard>
   </div>
 </template>
+

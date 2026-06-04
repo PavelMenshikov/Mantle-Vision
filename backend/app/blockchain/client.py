@@ -12,22 +12,34 @@ logger = logging.getLogger(__name__)
 
 AGENT_CONTRACT_ABI = [
     {
-        "inputs": [{"name": "owner", "type": "address"}, {"name": "name_", "type": "string"}, {"name": "desc", "type": "string"}],
-        "name": "createAgent",
-        "outputs": [{"name": "", "type": "uint256"}],
+        "inputs": [{"name": "agentURI", "type": "string"}],
+        "name": "register",
+        "outputs": [{"name": "agentId", "type": "uint256"}],
         "stateMutability": "nonpayable",
         "type": "function",
     },
     {
         "inputs": [{"name": "agentId", "type": "uint256"}],
-        "name": "getAgent",
+        "name": "getSignalCount",
+        "outputs": [{"name": "totalSignals", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [{"name": "agentId", "type": "uint256"}],
+        "name": "getAccuracy",
         "outputs": [
-            {"name": "owner", "type": "address"},
-            {"name": "name", "type": "string"},
-            {"name": "description", "type": "string"},
             {"name": "totalSignals", "type": "uint256"},
-            {"name": "accuracy", "type": "uint256"},
+            {"name": "accurateSignals", "type": "uint256"},
+            {"name": "accuracyBasisPoints", "type": "uint256"},
         ],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "getSignalRecorder",
+        "outputs": [{"name": "", "type": "address"}],
         "stateMutability": "view",
         "type": "function",
     },
@@ -110,7 +122,7 @@ class MantleClient:
             logger.error(f"Failed to get tx {tx_hash}: {e}")
         return None
 
-    async def create_agent_identity(self, name: str, description: str) -> Optional[int]:
+    async def create_agent_identity(self, agent_uri: str = "https://mantle-vision.ai/agent.json") -> Optional[int]:
         if not self.private_key or not self.agent_contract_addr:
             logger.warning("Agent contract address or private key not configured")
             return None
@@ -127,11 +139,7 @@ class MantleClient:
                 abi=AGENT_CONTRACT_ABI,
             )
 
-            tx = contract.functions.createAgent(
-                account.address,
-                name,
-                description,
-            ).build_transaction({
+            tx = contract.functions.register(agent_uri).build_transaction({
                 "from": account.address,
                 "nonce": self.w3.eth.get_transaction_count(account.address),
                 "gas": 300_000,
@@ -144,7 +152,7 @@ class MantleClient:
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
 
             if receipt.get("status") == 1:
-                logs = contract.events.AgentCreated().process_receipt(receipt)
+                logs = contract.events.Registered().process_receipt(receipt)
                 agent_id = logs[0]["args"]["agentId"] if logs else None
                 logger.info(f"Agent identity created: id={agent_id}, tx={tx_hash.hex()}")
                 return agent_id
@@ -169,13 +177,14 @@ class MantleClient:
                 address=self.w3.to_checksum_address(self.agent_contract_addr),
                 abi=AGENT_CONTRACT_ABI,
             )
-            result = contract.functions.getAgent(agent_id).call()
+            signal_count = contract.functions.getSignalCount(agent_id).call()
+            accuracy_result = contract.functions.getAccuracy(agent_id).call()
             return {
-                "owner": result[0],
-                "name": result[1],
-                "description": result[2],
-                "totalSignals": result[3],
-                "accuracy": result[4] / 1000.0 if result[4] else 0.0,
+                "agentId": agent_id,
+                "totalSignals": signal_count,
+                "accurateSignals": accuracy_result[1],
+                "accuracyBasisPoints": accuracy_result[2],
+                "accuracyPercent": accuracy_result[2] / 100.0 if accuracy_result[2] else 0.0,
             }
         except Exception as e:
             logger.error(f"Failed to get agent {agent_id}: {e}")

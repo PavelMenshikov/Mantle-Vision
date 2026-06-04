@@ -15,7 +15,7 @@ function handleToggle() {
         @click="wallet.mode = 'demo'"
         :class="[
           'px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200',
-          wallet.isDemo ? 'bg-cyber-accent/20 text-cyber-accent shadow-neon-green' : 'text-cyber-muted hover:text-white'
+          wallet.isDemo ? 'bg-cyber-accent/20 text-cyber-accent shadow-neon-green' : 'text-cyber-muted hover:text-cyber-text'
         ]"
       >
         DEMO
@@ -24,7 +24,7 @@ function handleToggle() {
         @click="wallet.mode = 'real'"
         :class="[
           'px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200',
-          wallet.isReal ? 'bg-cyber-electric/20 text-cyber-electric shadow-neon-blue' : 'text-cyber-muted hover:text-white'
+          wallet.isReal ? 'bg-cyber-electric/20 text-cyber-electric shadow-neon-blue' : 'text-cyber-muted hover:text-cyber-text'
         ]"
       >
         REAL

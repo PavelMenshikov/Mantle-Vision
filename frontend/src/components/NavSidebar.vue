@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import faviconUrl from '@/assets/favicon.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,8 +26,8 @@ function navigate(path) {
 
 <template>
   <aside class="w-16 glass rounded-none border-y-0 border-l-0 flex flex-col items-center py-4 gap-2 z-50 flex-shrink-0">
-    <div class="w-10 h-10 rounded-xl bg-accent-gradient flex items-center justify-center text-lg font-bold text-black mb-4 shadow-neon-green">
-      V
+    <div class="w-10 h-10 rounded-xl bg-accent-gradient flex items-center justify-center shadow-neon-green mb-4 overflow-hidden">
+      <img :src="faviconUrl" alt="Mantle Vision" class="w-full h-full object-contain p-1.5" />
     </div>
 
     <nav class="flex flex-col items-center gap-1 flex-1">
@@ -39,7 +40,7 @@ function navigate(path) {
           'w-10 h-10 rounded-xl flex items-center justify-center text-sm transition-all duration-200 relative group',
           isActive(item.path)
             ? 'text-cyber-accent bg-cyber-accent/10 shadow-neon-green'
-            : 'text-cyber-muted hover:text-white hover:bg-white/5'
+            : 'text-cyber-muted hover:text-cyber-text hover:bg-white/5'
         ]"
       >
         <span class="relative z-10">{{ item.icon }}</span>

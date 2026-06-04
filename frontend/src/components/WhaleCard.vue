@@ -10,15 +10,21 @@ const shortAddress = computed(() => {
   return props.whale.address.slice(0, 6) + '...' + props.whale.address.slice(-4)
 })
 
+const riskScore = computed(() => {
+  const r = props.whale.risk ?? props.whale.riskScore ?? 0.5
+  return r > 1 ? r : r * 10
+})
 const riskColor = computed(() => {
-  if (props.whale.risk >= 7) return 'text-cyber-danger'
-  if (props.whale.risk >= 4) return 'text-cyber-warning'
+  const r = riskScore.value
+  if (r >= 7) return 'text-cyber-danger'
+  if (r >= 4) return 'text-cyber-warning'
   return 'text-cyber-accent'
 })
 
 const riskLabel = computed(() => {
-  if (props.whale.risk >= 7) return 'High Risk'
-  if (props.whale.risk >= 4) return 'Medium Risk'
+  const r = riskScore.value
+  if (r >= 7) return 'High Risk'
+  if (r >= 4) return 'Medium Risk'
   return 'Low Risk'
 })
 
@@ -75,8 +81,8 @@ const formattedValue = computed(() => {
             :key="i"
             :class="[
               'w-3 h-1 rounded-full transition-all',
-              i <= Math.ceil(props.whale.risk / 2)
-                ? props.whale.risk >= 7 ? 'bg-cyber-danger' : props.whale.risk >= 4 ? 'bg-cyber-warning' : 'bg-cyber-accent'
+              i <= Math.ceil(riskScore.value / 2)
+                ? riskScore.value >= 7 ? 'bg-cyber-danger' : riskScore.value >= 4 ? 'bg-cyber-warning' : 'bg-cyber-accent'
                 : 'bg-white/5'
             ]"
           ></div>

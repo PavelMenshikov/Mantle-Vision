@@ -12,11 +12,25 @@ from app.models.schemas import Signal, SignalDirection, SignalSource
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are MantelAI, an on-chain intelligence analyst for the Mantle Network.
-You analyze blockchain data, whale movements, DeFi activity, and market sentiment.
-You have access to real-time crypto data: token prices (CoinGecko), crypto news, gas prices.
-Your responses must be concise JSON with signal type, asset, direction (buy/sell/hold),
-confidence (0-1), reasoning, and relevant transaction hashes.
+DIRECTION_MAP = {
+    "bullish": "buy", "bearish": "sell",
+    "neutral": "hold", "buy": "buy", "sell": "sell", "hold": "hold",
+}
+
+
+def _normalize_direction(raw: str) -> str:
+    return DIRECTION_MAP.get(raw.lower(), "hold")
+
+SYSTEM_PROMPT = """You are Mantle Vision AI, an on-chain intelligence and investigation agent for the Mantle Network.
+You analyze blockchain data to detect:
+1. Insider wallet clusters — groups of wallets funded from the same source acting in coordination
+2. Anomalous behavior — wallets waking up after long inactivity, unusual transaction patterns
+3. Whale exit traps — accumulation followed by distribution phases
+4. Smart money reputation — wallets with consistently profitable historical patterns
+5. Liquidity concentration risk — TVL dominated by few addresses
+
+Your responses must be JSON with: signal_type (anomaly/insider/whale/risk), asset, direction (bullish/bearish/neutral),
+confidence (0-1), reasoning with specific on-chain evidence, and relevant addresses/hashes.
 Focus on Mantle ecosystem: MNT, mETH, USDC, USDY, fBTC, and protocols like
 Cleopatra DEX, Methamorphosis LRT, Lendle lending, Merchant Moe, Agni Finance, Fluxion, etc."""
 
@@ -149,6 +163,24 @@ class AIAnalyzer:
         return self._altllm_client
 
     async def _call_ai(self, prompt: str, model: str = "gpt-4o-mini") -> Optional[str]:
+        altllm = self._get_altllm()
+        if altllm:
+            try:
+                resp = altllm.chat.completions.create(
+                    model="altllm-standard",
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": prompt},
+                    ],
+                    temperature=0.3,
+                    response_format={"type": "json_object"},
+                    max_tokens=500,
+                )
+                logger.info("Using AltLLM Standard for analysis (crypto-native AI)")
+                return resp.choices[0].message.content
+            except Exception as e:
+                logger.warning(f"AltLLM call failed: {e}")
+
         client = self._get_openai()
         if client:
             try:
@@ -182,23 +214,6 @@ class AIAnalyzer:
             except Exception as e:
                 logger.warning(f"Groq call failed: {e}")
 
-        altllm = self._get_altllm()
-        if altllm:
-            try:
-                resp = altllm.chat.completions.create(
-                    model="altllm-basic",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.3,
-                    max_tokens=500,
-                )
-                logger.info("Using AltLLM for analysis (crypto-native AI)")
-                return resp.choices[0].message.content
-            except Exception as e:
-                logger.warning(f"AltLLM call failed: {e}")
-
         return None
 
     async def analyze_whale_movement(self, whale_data: dict[str, Any]) -> Signal:
@@ -219,7 +234,7 @@ class AIAnalyzer:
             id=str(uuid4()),
             type=data.get("type", "whale_movement"),
             asset=data.get("asset", "MNT"),
-            direction=SignalDirection(data.get("direction", "hold")),
+            direction=SignalDirection(_normalize_direction(data.get("direction", "hold"))),
             confidence=data.get("confidence", 0.5),
             reasoning=data.get("reasoning", "No reasoning provided"),
             timestamp=datetime.now(timezone.utc),
@@ -243,32 +258,32 @@ class AIAnalyzer:
             id=str(uuid4()),
             type=data.get("type", "market_trend"),
             asset=data.get("asset", "MNT"),
-            direction=SignalDirection(data.get("direction", "hold")),
+            direction=SignalDirection(_normalize_direction(data.get("direction", "hold"))),
             confidence=data.get("confidence", 0.5),
             reasoning=data.get("reasoning", "No reasoning provided"),
             timestamp=datetime.now(timezone.utc),
             source=SignalSource.ANALYZER,
         )
 
-    async def generate_signal(self, asset: str = "MNT") -> Signal:
+    async def generate_signal(self, asset: str = "MNT") -> Optional[Signal]:
         ai_result = await self._call_ai(
             f"Generate a trading signal for {asset} on Mantle Network. "
             "Consider on-chain volume, whale activity, and market sentiment. Return JSON."
         )
 
-        if ai_result:
-            try:
-                data = json.loads(ai_result)
-            except json.JSONDecodeError:
-                data = _fallback_signal(asset)
-        else:
-            data = _fallback_signal(asset)
+        if not ai_result:
+            return None
+
+        try:
+            data = json.loads(ai_result)
+        except json.JSONDecodeError:
+            return None
 
         return Signal(
             id=str(uuid4()),
             type=data.get("type", "combined_signal"),
             asset=data.get("asset", asset),
-            direction=SignalDirection(data.get("direction", "hold")),
+            direction=SignalDirection(_normalize_direction(data.get("direction", "hold"))),
             confidence=data.get("confidence", 0.5),
             reasoning=data.get("reasoning", "No reasoning provided"),
             txHash=data.get("txHash"),
@@ -281,7 +296,8 @@ class AIAnalyzer:
         for point in data_points[:5]:
             asset = point.get("asset", "MNT")
             signal = await self.generate_signal(asset)
-            signals.append(signal)
+            if signal:
+                signals.append(signal)
         return signals
 
 

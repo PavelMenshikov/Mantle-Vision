@@ -7,10 +7,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        'cyber-bg': '#0a0a0f',
-        'cyber-glass': 'rgba(255, 255, 255, 0.05)',
-        'cyber-glass-hover': 'rgba(255, 255, 255, 0.08)',
-        'cyber-glass-border': 'rgba(255, 255, 255, 0.1)',
+        'cyber-bg': 'var(--color-bg)',
+        'cyber-glass': 'var(--color-glass)',
+        'cyber-glass-hover': 'var(--color-glass-hover)',
+        'cyber-glass-border': 'var(--color-glass-border)',
         'cyber-accent': '#00ffaa',
         'cyber-accent-dim': 'rgba(0, 255, 170, 0.3)',
         'cyber-electric': '#3b82f6',
@@ -19,8 +19,10 @@ export default {
         'cyber-danger-dim': 'rgba(255, 51, 102, 0.3)',
         'cyber-warning': '#f59e0b',
         'cyber-warning-dim': 'rgba(245, 158, 11, 0.3)',
-        'cyber-surface': '#12121a',
-        'cyber-muted': '#6b7280',
+        'cyber-surface': 'var(--color-surface)',
+        'cyber-muted': 'var(--color-muted)',
+        'cyber-text': 'var(--color-text)',
+        'cyber-text-secondary': 'var(--color-text-secondary)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

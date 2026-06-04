@@ -1,24 +1,36 @@
 TODO: Development Roadmap
 =========================
 
-Phase 1 — Architecture Rewrite (core)
+Phase 1 — Architecture Rewrite (core) ✅
 --------------------------------------
-- [ ] Trigger layer: whale movement / volume spike / protocol event → wakes up analyzer
-- [ ] Strategy layer: 3 parallel strategies run on trigger
+- [x] Trigger layer: whale movement / volume spike / protocol event → wakes up analyzer
+- [x] Strategy layer: 3 parallel strategies run on trigger
       1. RSIStrategy — oversold/overbought on historical klines
       2. VolumeStrategy — volume anomaly + protocol TVL change
       3. NostalgiaStrategy — pattern-based (adapted from Gekko/Nostalgia)
-- [ ] WhaleScore — mathematical score based on wallet history, flow direction, exchange interaction
-- [ ] AI arbiter — receives {RSI, Volume, Nostalgia, Whale} scores, says YES/NO to trade
+- [x] WhaleScore — mathematical score based on wallet history, flow direction, exchange interaction
+- [x] AI arbiter — receives {RSI, Volume, Nostalgia, Whale} scores, says YES/NO to trade
        NOT "generate signal from scratch" (costly), just "approve or reject" (cheap)
-- [ ] Database (SQLite): persist signals, trades, P&L, strategy scores historically
+- [x] Database (SQLite): persist signals, trades, P&L, strategy scores historically
        So users who join a week later see full history, not blank screen
+
+Phase 1b — Intelligence Layer (NEW) ✅
+------------------------------------------
+- [x] Wallet Cluster Analyzer — граф связей кошельков, поиск инсайдерских кластеров
+- [x] Anomaly Detector (Isolation Forest) — поиск аномального поведения
+- [x] Wallet Reputation Engine — расширенный scoring (sentinel, cluster, reputation, influence)
+- [x] Knowledge Base — anomaly_patterns + context for AI
+- [x] Telegram dual mode — аналитика (OFF) / рекомендации (ON)
+- [x] Fixed: POST /api/signals/generate endpoint
+- [x] Fixed: client.py ABI синхронизирован с реальными контрактами
 
 Phase 2 — Infrastructure
 -------------------------
 - [ ] Docker: single docker-compose.yml (backend + frontend + db)
 - [ ] Wallet connect via MetaMask browser auth (not .env private key)
 - [ ] Fix UI buttons: theme toggle, refresh, reconnect
+- [ ] Deploy to Mantle Forge (https://github.com/Mantle-Forge/mantle-forge-backend)
+- [ ] Deploy frontend to Vercel free tier
 
 Phase 3 — Sponsors (Twitter unlock needed)
 ---------------------------------------------
@@ -32,3 +44,5 @@ Phase 4 — Polish
 - [ ] Backtesting dashboard — replay strategies on historical data
 - [ ] Leaderboard — compare strategy performance
 - [ ] Real DEX trading on Mantle (via dex_trader.py, user's own wallet)
+- [ ] Apply for $1K Deployment Award (first 20 teams)
+- [ ] Deploy AgentIdentity + SignalRecorder на Mantle Sepolia

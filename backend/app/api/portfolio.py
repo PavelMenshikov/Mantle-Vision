@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from app.models.schemas import AssetType, PaperTrade, PnLDataPoint, PortfolioPosition, TradeType
+from app.database import db
+from app.models.schemas import AssetType, PaperTrade, PnLDataPoint, PortfolioPosition, TradeStatus, TradeType
 from app.services.paper_trading import paper_trading as engine
 from app.services.telegram_bot import telegram
 
@@ -20,14 +24,25 @@ async def get_portfolio():
 
 @router.get("/pnl", response_model=list[PnLDataPoint])
 async def get_pnl_chart():
-    return engine.get_pnl_chart()
+    return [PnLDataPoint(**p) for p in db.get_pnl_history()]
 
 
 @router.get("/history", response_model=list[PaperTrade])
 async def get_trade_history(
     limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
-    return engine.get_trades(limit=limit)
+    return [_row_to_trade(t) for t in db.get_trades(limit=limit, offset=offset)]
+
+
+@router.get("/stats", response_model=dict)
+async def portfolio_stats():
+    return {
+        "total_value": engine.get_portfolio_value(),
+        "pnl": engine.get_pnl(),
+        "capital": engine.capital,
+        "trade_count": len(engine.trades),
+    }
 
 
 @router.post("/trade", response_model=PaperTrade)
@@ -36,13 +51,25 @@ async def execute_trade(
     asset: AssetType,
     amount: str,
 ):
-    from decimal import Decimal
     try:
         parsed_amount = Decimal(amount)
     except Exception:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Invalid amount")
 
     trade = engine.execute_trade(trade_type, asset, parsed_amount)
+    db.save_trade(trade)
     await telegram.notify_trade(trade.model_dump(mode="json"))
     return trade
+
+
+def _row_to_trade(row: dict) -> PaperTrade:
+    return PaperTrade(
+        id=row["id"],
+        type=TradeType(row["type"]),
+        asset=AssetType(row["asset"]),
+        amount=Decimal(row["amount"]),
+        price=row["price"],
+        timestamp=datetime.fromisoformat(row["timestamp"]),
+        status=TradeStatus(row["status"]),
+        txHash=row.get("tx_hash"),
+    )

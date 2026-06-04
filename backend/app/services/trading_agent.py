@@ -169,6 +169,70 @@ class TradingAgent:
         except Exception:
             pass
 
+    async def execute_arbiter_decision(
+        self, signal: Signal, strategy_results: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
+        """Execute a trade based on arbiter-approved signal."""
+        from app.services.paper_trading import paper_trading
+        from app.services.dex_trader import dex_trader
+        from app.services.telegram_bot import telegram
+        from app.database import db
+
+        asset_str = signal.asset
+        try:
+            asset = AssetType(asset_str.upper())
+        except ValueError:
+            asset = AssetType.MNT
+
+        confidence = signal.confidence
+        if confidence < MIN_CONFIDENCE_TO_TRADE:
+            logger.info(f"Arbiter: confidence {confidence:.2f} below threshold, skipping")
+            return None
+
+        # Compute position size based on signal strength
+        capital_for_asset = CAPITAL_PER_ASSET.get(asset_str, 1000)
+        qty = capital_for_asset * confidence * MAX_POSITION_SIZE_PCT / (self._get_price(asset_str) or 1)
+
+        direction = signal.direction.value
+        trade_type = TradeType.BUY if direction == "buy" else TradeType.SELL
+        from decimal import Decimal
+        trade = paper_trading.execute_trade(trade_type, asset, Decimal(str(round(qty, 4))))
+        self.total_trades += 1
+
+        if trade.status == TradeStatus.EXECUTED:
+            self.wins += 1
+            logger.info(f"Arbiter: EXECUTED {direction.upper()} {qty:.4f} {asset} (conf: {confidence:.2f})")
+        else:
+            self.losses += 1
+            logger.info(f"Arbiter: FAILED {direction.upper()} {qty:.4f} {asset}")
+
+        # Persist trade to DB with strategy scores
+        db.save_trade(trade, signal_id=signal.id, strategy_scores={
+            "rsi": strategy_results.get("rsi", {}).get("score"),
+            "volume": strategy_results.get("volume", {}).get("score"),
+            "nostalgia": strategy_results.get("nostalgia", {}).get("score"),
+            "whale": strategy_results.get("whale", {}).get("whale_score"),
+        })
+
+        try:
+            await telegram.notify_trade(trade.model_dump(mode="json"))
+        except Exception:
+            pass
+
+        return {"trade": trade, "signal": signal}
+
+    def _get_price(self, asset: str) -> float:
+        from app.services.price_feed import TOKEN_PRICES
+        return TOKEN_PRICES.get(asset, 1.0)
+
+    def get_pnl(self) -> float:
+        from app.services.paper_trading import paper_trading
+        return paper_trading.get_pnl()
+
+    def get_portfolio_value(self) -> float:
+        from app.services.paper_trading import paper_trading
+        return paper_trading.get_portfolio_value()
+
     async def get_status(self) -> dict[str, Any]:
         from app.services.paper_trading import paper_trading
         prices = await get_all_prices()

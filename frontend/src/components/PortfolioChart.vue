@@ -107,7 +107,7 @@ const ranges = ['1W', '1M', '3M', 'ALL']
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-display font-semibold text-white">Portfolio P&L</h3>
+      <h3 class="text-sm font-display font-semibold text-cyber-text">Portfolio P&L</h3>
       <div class="flex glass !p-0.5 rounded-lg gap-0.5">
         <button
           v-for="r in ranges"
@@ -115,7 +115,7 @@ const ranges = ['1W', '1M', '3M', 'ALL']
           @click="range = r"
           :class="[
             'px-2.5 py-1 text-[10px] font-mono rounded-md transition-all duration-200',
-            range === r ? 'bg-cyber-accent/20 text-cyber-accent' : 'text-cyber-muted hover:text-white'
+            range === r ? 'bg-cyber-accent/20 text-cyber-accent' : 'text-cyber-muted hover:text-cyber-text'
           ]"
         >
           {{ r }}
@@ -130,3 +130,4 @@ const ranges = ['1W', '1M', '3M', 'ALL']
     </div>
   </div>
 </template>
+
