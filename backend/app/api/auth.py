@@ -114,9 +114,11 @@ async def verify(req: VerifyRequest):
         raise HTTPException(400, "Message mismatch. Use the exact message from /nonce.")
 
     try:
+        from eth_account.messages import encode_defunct
         from web3 import Web3
+        message_obj = encode_defunct(text=req.message)
         recovered = Web3().eth.account.recover_message(
-            Web3().keccak_text(req.message),
+            message_obj,
             signature=req.signature,
         )
         if recovered.lower() != addr:

@@ -8,7 +8,7 @@ export const useTelegramStore = defineStore('telegram', () => {
   const loading = ref(false)
   const error = ref('')
 
-  const botUsername = 'dorahacksmantle_bot'
+  const botUsername = ref('')
   const instructions = computed(() => {
     if (!code.value) return ''
     return `Send /connect ${code.value} to @${botUsername} in Telegram`
@@ -24,6 +24,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       const res = await fetch('/api/auth/telegram/init')
       const data = await res.json()
       code.value = data.code
+      botUsername.value = data.bot_username || 'MantleVisionBot'
       startPolling()
     } catch (e) {
       error.value = 'Failed to generate code'
