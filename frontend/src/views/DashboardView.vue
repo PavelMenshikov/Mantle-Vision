@@ -49,7 +49,7 @@ function formatTime(ts) {
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-2xl font-display font-bold text-gradient">Dashboard</h2>
-        <p class="text-sm text-cyber-muted font-mono mt-1">Real-time on-chain intelligence overview</p>
+        <p class="text-sm text-cyber-muted font-mono mt-1">Wallet intelligence, anomaly detection, and transaction monitoring</p>
       </div>
       <NeonButton variant="primary" size="sm" @click="signals.fetchSignals(); fetchScannerStatus()">
         <RefreshCw class="w-4 h-4" />

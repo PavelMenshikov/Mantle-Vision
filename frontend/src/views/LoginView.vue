@@ -52,7 +52,7 @@ watch(() => tg.connected, (val) => {
     <div class="w-full max-w-md space-y-6 animate-fade-in">
       <div class="text-center space-y-2">
         <h1 class="text-4xl font-display font-bold text-gradient">Mantle Vision</h1>
-        <p class="text-sm text-cyber-muted font-mono">AI-powered on-chain intelligence</p>
+        <p class="text-sm text-cyber-muted font-mono">On-Chain Wallet Intelligence</p>
       </div>
 
       <GlassCard accent="green">

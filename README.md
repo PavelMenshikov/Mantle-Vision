@@ -2,15 +2,13 @@
 
 # Mantle Vision
 
-**Autonomous AI Trading Agent for Mantle Network**
+**On-Chain Wallet Intelligence for Mantle Network**
 
 [![Built for Mantle](https://img.shields.io/badge/Built%20for-Mantle-FFD700?style=for-the-badge&logo=ethereum&logoColor=FFD700)](https://mantle.xyz)
 [![Hackathon](https://img.shields.io/badge/Turing%20Test-2026-8A2BE2?style=for-the-badge)](https://dorahacks.io/hackathon/mantle-turing-test)
-[![Phase II](https://img.shields.io/badge/Phase-AI%20Awakening-00FF88?style=for-the-badge)](https://dorahacks.io/hackathon/mantle-turing-test)
 
 [![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?style=flat-square&logo=vue.js)](https://vuejs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8-363636?style=flat-square&logo=solidity)](https://soliditylang.org/)
 [![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai)](https://openai.com/)
 [![AltLLM](https://img.shields.io/badge/AltLLM-Crypto%20AI-FF6B6B?style=flat-square)](https://altllm.ai/)
@@ -19,70 +17,57 @@
 ---
 
 <p align="center">
-  <b>Real-time on-chain intelligence • AI-powered trading signals • Autonomous paper trading • Telegram alerts</b>
-</p>
-
-<p align="center">
-  <i>An entry for the Mantle Turing Test Hackathon 2026 — Phase II: AI Awakening</i>
+  <b>Man-in-the-loop intelligence.</b> Not a trading bot. Not a copy trader.</br>
+  We highlight anomalies, map wallet connections, assess risk — <i>you</i> decide.
 </p>
 
 ---
 
-## Overview
+## Why not another trading bot?
 
-Mantle Vision is an autonomous AI agent that monitors the Mantle blockchain in real time, analyzes whale movements and DeFi activity, generates trading signals, and executes paper trades — all without human intervention. It features a cyberpunk-styled dashboard and a Telegram bot for mobile notifications.
+Every crypto hackathon has 20 "AI trading bots". Ours isn't one.
 
-### Tracks & Prizes
-| Track | Prize | Target |
-|-------|-------|--------|
-| **AI Alpha & Data** | $8,500 | On-chain AI analysis |
-| **AI Trading & Strategy** | $3,500 | Autonomous trading agent |
-| **Best AI Agent** | $200 | Agent usability & innovation |
-| **Best UI/UX** | $3,000 | Dashboard experience |
+Mantle Vision is an **investigation tool**. You see a suspicious wallet in a transaction — paste the address and get:
+- **Who funded it** — funding tree (who sent money to whom)
+- **What type it is** — CEX wallet? Insider cluster? Fresh setup? Smart money?
+- **Risk score** — mathematical + ML-based anomaly detection
+- **Cluster connections** — linked wallets, insider networks
+- **AI summary** — one-line plain English explanation
+- **Recent activity** — last transactions on Mantle
+
+The only "signal" we generate is **insider detection** — if we find a wallet behaving like an insider (funded just before a protocol event, coordinated moves), we flag it. Everything else is just intelligence for you to act on.
+
+> **Man-in-the-loop.** The tool watches. The AI analyzes. The human decides.
+
+---
+
+## What it does
+
+| Feature | Description |
+|---------|-------------|
+| **Wallet Analysis** | Paste any Mantle address → risk score, wallet type, tags, AI summary |
+| **Funding Tree** | Visual graph of who funded whom — trace money flow |
+| **Cluster Detection** | Insider wallet networks, connected addresses |
+| **Anomaly Detection** | Isolation Forest + rule-based flags for suspicious behavior |
+| **Transaction Stream** | Live Mantle transactions with AI anomaly highlighting |
+| **Whale Watchlist** | Track specific addresses, get cluster context |
+| **Telegram Bot** | Alerts on anomalies, insider clusters, whale movement |
 
 ---
 
 ## Screenshots
 
-### Dashboard
-Real-time portfolio value, P&L, active signals, and network status — all in one place.
-![Dashboard](docs/images/dashboard.png)
+### Wallet Intelligence
+Search any address — risk score, type, AI summary, and funding tree.
+![Wallet](docs/images/dashboard.png)
 
-### Signals
-AI-generated trading signals with direction, confidence score, and reasoning from each analysis cycle.
-![Signals](docs/images/signals.png)
+### Funding Tree
+Visual graph of wallet connections — who funded whom.
+![Funding Tree](docs/images/signals.png)
 
-### Whales
-On-chain whale tracking — live blockscan for large transfers and protocol interactions on Mantle.
-![Whales](docs/images/whales.png)
-
----
-
-## Features
-
-### 🤖 Autonomous Trading Agent
-- Scans Mantle blocks every 120s for whale transfers & protocol interactions
-- AI analysis with 3-provider fallback chain: **OpenAI → Groq → AltLLM**
-- Autonomous BUY/SELL/HOLD decisions based on real on-chain data
-- Paper trading engine with $10K virtual capital, live P&L tracking
-- **10 AI API calls per cycle** (3 assets × 3 analyses + 1 summary)
-
-### 📊 Live Dashboard
-- Real-time signal feed with confidence indicators
-- Portfolio positions & performance chart
-- Whale activity monitor
-- Token price ticker (CoinGecko)
-
-### 📱 Telegram Notifier
-- Trade execution alerts
-- Whale movement warnings
-- AI signal notifications
-- Agent status reports
-
-### ⛓️ On-Chain Identity (ERC-8004)
-- Agent registration on Mantle via ERC-8004 contract
-- Verified on-chain signal recording
-- Accuracy tracking
+### Transaction Stream
+Live Mantle blocks with AI-flagged anomalies highlighted in red.
+![Transactions](docs/images/whales.png)
 
 ---
 
@@ -90,202 +75,138 @@ On-chain whale tracking — live blockscan for large transfers and protocol inte
 
 ```
 mantle-vision/
-├── frontend/                      # Vue 3 + Vite + Tailwind
+├── frontend/                        # Vue 3 + Vite + Tailwind
 │   ├── src/
-│   │   ├── components/           # GlassCard, NeonButton, SignalCard, WalletConnect...
-│   │   ├── views/                # Dashboard, Signals, Portfolio, Whales, Settings
-│   │   ├── stores/               # Pinia: wallet, signals, portfolio
-│   │   └── composables/          # WebSocket real-time client
-│   └── vite.config.js            # Proxy to backend :8000
+│   │   ├── components/              # GlassCard, NeonButton, TransactionStream, FundingTree...
+│   │   ├── views/                   # Dashboard, Wallet, Transactions, Whales, Settings
+│   │   ├── stores/                  # Pinia: auth, signals, wallet, theme
+│   │   └── router/                  # Vue Router with auth guards
+│   └── vite.config.js               # Proxy to backend :8000
 │
-├── backend/                       # FastAPI + AI + Blockchain
+├── backend/                         # FastAPI + AI + Blockchain
 │   ├── app/
-│   │   ├── api/                  # REST: /signals, /whales, /portfolio, /auth, /ws
+│   │   ├── api/                     # /wallet, /signals, /whales, /auth, /txs
 │   │   ├── services/
-│   │   │   ├── mantle_scanner.py # Real Mantle block scanner
-│   │   │   ├── nansen.py         # Whale tracking (real data fallback)
-│   │   │   ├── analyzer.py       # AI analysis (OpenAI → Groq → AltLLM)
-│   │   │   ├── trading_agent.py  # Autonomous decision engine
-│   │   │   ├── dex_trader.py     # On-chain DEX swap execution
-│   │   │   ├── paper_trading.py  # Virtual portfolio engine
-│   │   │   ├── price_feed.py     # Live CoinGecko prices
-│   │   │   └── telegram_bot.py   # Telegram notification service
-│   │   ├── blockchain/           # Mantle RPC client & contract interactions
-│   │   └── models/               # Pydantic schemas
+│   │   │   ├── wallet.py            # Wallet Analysis API
+│   │   │   ├── cluster_analyzer.py  # Wallet cluster detection
+│   │   │   ├── anomaly_detector.py  # Isolation Forest anomaly detection
+│   │   │   ├── whale_score.py       # Multi-factor wallet scoring
+│   │   │   ├── analyzer.py          # AI (OpenAI → Groq → AltLLM)
+│   │   │   ├── mantle_scanner.py    # Real Mantle block scanner
+│   │   │   ├── knowledge_base.py    # Pattern matching
+│   │   │   ├── price_feed.py        # CoinGecko prices
+│   │   │   └── telegram_bot.py      # Telegram alerts
+│   │   ├── models/                  # Pydantic schemas
+│   │   └── database.py              # SQLite persistence
 │   └── requirements.txt
 │
-├── contracts/                     # Solidity
-│   ├── AgentIdentity.sol         # ERC-8004 agent identity
-│   └── SignalRecorder.sol        # On-chain signal ledger
-│
-├── .env.example                   # Environment template
-└── README.md
+├── contracts/                       # Solidity (ERC-8004 agent identity)
+├── docs/images/                     # Screenshots
+├── .env.example
+└── docker-compose.yml
 ```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
 ```bash
+git clone https://github.com/PavelMenshikov/Mantle-Vision.git
+cd mantle-vision
+
 # Backend
-cd mantle-vision/backend
+cd backend
 pip install -r requirements.txt
-
-# Frontend
-cd mantle-vision/frontend
-npm install
-```
-
-### Configure Environment
-```bash
-cp .env.example .env
-# Edit .env with your API keys (see .env.example for required fields)
-```
-
-### Run
-```bash
-# Terminal 1 — Backend (FastAPI)
-cd mantle-vision/backend
+cp ../.env.example .env  # Add your API keys
 uvicorn app.main:app --reload --port 8000
-# → http://localhost:8000/docs
 
-# Terminal 2 — Frontend (Vue 3)
-cd mantle-vision/frontend
+# Frontend (separate terminal)
+cd frontend
+npm install
 npm run dev
-# → http://localhost:3000
 ```
 
-### Verify
-```bash
-curl http://localhost:8000/health
-# → {"status":"ok","blockchain":"mantle","block":39541546,"mode":"demo"}
-```
+Open [http://localhost:3000](http://localhost:3000) — log in with MetaMask or Telegram, then paste any Mantle address into the search bar.
 
 ---
 
-## API Endpoints
+## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Server status & current block |
-| GET | `/api/signals` | List signals (paginated, filterable) |
-| GET | `/api/signals/{id}` | Signal details |
-| POST | `/api/signals/generate` | Generate AI signal |
-| GET | `/api/whales` | List tracked whales |
-| POST | `/api/whales` | Add whale address |
-| DELETE | `/api/whales/{address}` | Remove whale |
-| GET | `/api/whales/{address}/activity` | Whale activity feed |
-| GET | `/api/portfolio` | Portfolio positions |
-| GET | `/api/portfolio/pnl` | P&L history chart data |
-| GET | `/api/portfolio/history` | Trade history |
-| POST | `/api/portfolio/trade` | Execute paper trade |
-| GET | `/api/auth/nonce/{address}` | Get SIWE nonce |
+| GET | `/health` | Server status |
+| GET | `/api/wallet/{address}/analysis` | Full wallet profile (risk, type, tags, signals) |
+| GET | `/api/wallet/{address}/funding-tree` | Funding connections graph |
+| GET | `/api/wallet/{address}/summary` | AI one-line wallet summary |
+| GET | `/api/wallet/{address}/transactions` | Recent wallet transactions |
+| GET | `/api/signals` | Insider/anomaly signals |
+| GET | `/api/whales?user_id=...` | User's whale watchlist |
+| POST | `/api/whales` | Add address to watchlist |
+| GET | `/api/txs/recent` | Live transaction stream |
+| GET | `/api/auth/nonce/{address}` | SIWE authentication |
 | POST | `/api/auth/verify` | Verify wallet signature |
-| GET | `/api/auth/session` | Check session validity |
 | WS | `/ws` | Real-time signal stream |
 
 ---
 
-## AI Provider Fallback Chain
+## How wallets are scored
 
-```
-┌─────────┐    ┌────────┐    ┌──────────┐    ┌───────────┐
-│ OpenAI  │ →  │  Groq  │ →  │  AltLLM  │ →  │ Fallback  │
-│ GPT-4o  │    │Mixtral │    │crypto-ai │    │determin.  │
-└─────────┘    └────────┘    └──────────┘    └───────────┘
-```
+| Type | How detected | What it means |
+|------|-------------|---------------|
+| **Insider** | Cluster analysis + funding patterns | Connected to known insider addresses |
+| **Anomaly** | Isolation Forest ML model | Statistical outlier in tx behavior |
+| **Smart Money** | Historical pattern matching | Behaves like experienced traders |
+| **CEX** | Tag-based + interaction patterns | Exchange deposit/withdrawal wallet |
+| **Fresh** | No history, small test txns | New wallet, possible reconnaissance |
+| **Clean** | No red flags | Normal activity patterns |
 
-| Provider | Key Status | Model | Cost | Specialty |
-|----------|-----------|-------|------|-----------|
-| OpenAI | ✅ | `gpt-4o-mini` | ~$0.15/1M tokens | JSON mode, structured output |
-| Groq | ✅ | `mixtral-8x7b-32768` | Free | Fast inference |
-| AltLLM | ✅ | `altllm-basic` | $5/1M tokens | Built-in CoinGecko, crypto news, gas data |
-
----
-
-## Smart Contract Addresses
-
-| Contract | Address | Network |
-|----------|---------|---------|
-| AgentIdentity (ERC-8004) | *TBD — deploy after Phase II* | Mantle Sepolia |
-| SignalRecorder | *TBD — deploy after Phase II* | Mantle Sepolia |
-
----
-
-## Tech Stack
-
-![Vue.js](https://img.shields.io/badge/Vue_3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Web3](https://img.shields.io/badge/Web3.py-F16822?style=for-the-badge&logo=web3.js&logoColor=white)
-![Solidity](https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-
-**Frontend:** Vue 3, Vite, Tailwind CSS, Pinia, Chart.js, Ethers.js  
-**Backend:** FastAPI, Uvicorn, Web3.py, OpenAI SDK, httpx, aiogram  
-**Contracts:** Solidity 0.8.20, OpenZeppelin, ERC-721 (ERC-8004)  
-**Blockchain:** Mantle Network (EVM L2) — Sepolia testnet  
-
----
-
-## Environment Variables
-
-See [`.env.example`](.env.example) for the complete list.
+Risk score combines: wallet age, tx frequency, value moved, cluster membership, anomaly score, exchange interaction.
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Core Architecture ✅
-- [x] Real-time on-chain scanner (Mantle blocks, whale transfers, protocol interactions)
-- [x] 3-provider AI fallback chain (OpenAI → Groq → AltLLM)
-- [x] Strategy layer — RSI, Volume Anomaly, Nostalgia patterns
-- [x] WhaleScore — mathematical scoring of wallet activity
-- [x] AI arbiter — strategies compute, AI says YES/NO
-- [x] Database (SQLite) — persistent history
-
-### Phase 1b — Intelligence Layer ✅
-- [x] Wallet Cluster Analyzer — граф связей, инсайдерские кластеры
-- [x] Anomaly Detector (Isolation Forest) — аномальное поведение
-- [x] Wallet Reputation Engine — scoring (sentinel, cluster, reputation)
-- [x] Knowledge Base + AI context
-- [x] Telegram dual mode — аналитика / рекомендации
+### Phase 1 — Core ✅
+- [x] Mantle blockchain scanner
+- [x] Wallet clustering + anomaly detection
+- [x] Wallet reputation scoring
+- [x] AI analysis (OpenAI → Groq → AltLLM)
+- [x] Telegram alerts
 
 ### Phase 2 — Wallet Intelligence ✅
-- [x] Wallet Analysis API — risk score, tags, cluster, signals
-- [x] Wallet Intelligence UI — full profile page with search
-- [x] Funding Tree — граф связей (кто кому переводил)
-- [x] AI Wallet Summary — AltLLM-generated one-line description
-- [x] Per-user workspace — users, scoped watchlists
-- [x] Transaction Stream — instead of portfolio
-- [x] Anomaly highlighting — AI-flagged suspicious txs
-- [x] Lucide icons — all emoji replaced with SVG
-- [ ] Live wallet feed — WebSocket subscription
-- [ ] Force-directed graph — D3 cluster visualization
+- [x] Wallet Analysis API + UI
+- [x] Funding tree visualization
+- [x] AI wallet summaries
+- [x] Transaction stream with anomaly highlighting
+- [x] Per-user workspace
+- [x] Lucide icon system
 
-### Phase 3 — Sponsor APIs
-- [ ] Nansen AI ($7K credits) — whale intelligence
-- [ ] Elfa AI ($36K credits) — social sentiment
-- [ ] Surf AI ($30K credits) — AI compute
-- [ ] Orbit AI ($30K credits) — agent tools
+### Phase 3 — Live Intelligence
+- [ ] Force-directed cluster graph (D3.js)
+- [ ] Live wallet feed — subscribe to address activity
+- [ ] Wallet report export (PDF / shareable link)
+- [ ] Telegram alerts on watched wallets
+- [ ] Historical activity replay
 
-### Phase 4 — Production
-- [ ] Real DEX trading on Mantle (user's own wallet)
-- [ ] Telegram alerts on watched wallet activity
-- [ ] Wallet report export
-- [ ] Backtesting dashboard
+### Phase 4 — Ecosystem
+- [ ] Nansen API integration ($7K sponsor credits)
+- [ ] Elfa AI social sentiment ($36K credits)
+- [ ] Community wallet tagging
+- [ ] ERC-8004 agent identity deployment
 
 ---
 
-## License
+## Tech Stack
 
-MIT
+**Frontend:** Vue 3, Vite, Tailwind CSS, Pinia, Lucide Icons  
+**Backend:** FastAPI, Web3.py, OpenAI SDK, scikit-learn, NetworkX  
+**AI:** OpenAI GPT-4o-mini, Groq Mixtral, AltLLM (crypto-native)  
+**Blockchain:** Mantle Network (EVM L2) — Mainnet + Sepolia  
+**Infra:** Docker, SQLite, WebSocket
 
 ---
 
 <p align="center">
-  Built with ☕ and ❤️ for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a> • Phase II: AI Awakening
+  Built for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a><br/>
+  <i>Free tool. Man-in-the-loop. No trading signals. Just intelligence.</i>
 </p>

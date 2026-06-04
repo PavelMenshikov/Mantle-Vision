@@ -52,7 +52,7 @@ onMounted(() => {
       <div>
         <h2 class="text-2xl font-display font-bold text-gradient">Signals</h2>
         <p class="text-sm text-cyber-muted font-mono mt-1">
-          AI-generated trading signals from on-chain data
+          Anomaly alerts, insider clusters, and wallet intelligence
         </p>
       </div>
       <div class="flex items-center gap-3">

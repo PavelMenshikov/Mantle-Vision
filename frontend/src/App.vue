@@ -42,6 +42,7 @@ onMounted(() => {
       <header class="h-16 glass rounded-none border-x-0 border-t-0 flex items-center justify-between px-6 z-40">
         <div class="flex items-center gap-3">
           <h1 class="text-lg font-display font-semibold text-gradient">Mantle Vision</h1>
+          <span class="text-[10px] font-mono text-cyber-accent/40 bg-cyber-accent/5 px-2 py-0.5 rounded-full hidden sm:inline">Wallet Intelligence</span>
           <span class="text-xs text-cyber-muted font-mono">v1.0.0</span>
           <span class="text-[10px] font-mono text-cyber-accent/60 bg-cyber-accent/5 px-2 py-0.5 rounded-full">
             {{ auth.displayName }}

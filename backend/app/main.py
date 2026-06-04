@@ -239,9 +239,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Mantle Vision",
-    description="AI-powered on-chain intelligence platform for Mantle Network",
-    version="1.0.0",
+    title="Mantle Vision — Wallet Intelligence",
+    description="On-chain wallet analysis, anomaly detection, and funding tree visualization for Mantle Network",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
