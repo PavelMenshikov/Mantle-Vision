@@ -7,7 +7,6 @@ from fastapi import APIRouter
 
 from app.config import settings
 from app.database import db
-from app.services.mantle_scanner import mantle_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,8 @@ router = APIRouter(prefix="/scanner", tags=["scanner"])
 
 @router.get("/status")
 async def scanner_status():
+    from app.services.mantle_scanner import mantle_scanner
+
     stats = await db.call(db.get_stats)
     latest_block = mantle_scanner.get_latest_block()
     prices = await db.call(db.get_cached_prices)

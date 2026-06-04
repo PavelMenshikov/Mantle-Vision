@@ -6,7 +6,6 @@ from fastapi import APIRouter
 
 from app.database import db
 from app.models.schemas import MantleTx
-from app.services.mantle_scanner import mantle_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,8 @@ router = APIRouter(prefix="/txs", tags=["txs"])
 @router.get("/recent", response_model=list[MantleTx])
 async def recent_transactions(limit: int = 20):
     """Return recent transactions from the latest Mantle blocks."""
+    from app.services.mantle_scanner import mantle_scanner
+
     latest = mantle_scanner.get_latest_block()
     if not latest:
         return []

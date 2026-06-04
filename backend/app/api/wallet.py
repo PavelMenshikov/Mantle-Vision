@@ -8,7 +8,6 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.database import db
 from app.models.schemas import WhaleProfile
-from app.services.mantle_scanner import mantle_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -217,6 +216,8 @@ async def wallet_summary(address: str):
 
 @router.get("/{address}/transactions")
 async def wallet_transactions(address: str, limit: int = Query(20, ge=1, le=100)):
+    from app.services.mantle_scanner import mantle_scanner
+
     addr = address.lower()
     latest = mantle_scanner.get_latest_block()
     if not latest or not mantle_scanner.w3:
