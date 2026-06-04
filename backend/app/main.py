@@ -9,11 +9,10 @@ from typing import Any, AsyncGenerator
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, portfolio, signals, whales, telegram_auth, scanner, transactions, wallet
+from app.api import auth, signals, whales, telegram_auth, scanner, transactions, wallet
 from app.api.ws import manager
 from app.config import settings
 from app.database import db
-from app.services.telegram_bot import telegram
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -207,14 +206,12 @@ async def signal_scanner() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Mantle Vision backend starting")
+    from app.services.telegram_bot import telegram
     scanner_task = asyncio.create_task(signal_scanner())
     heartbeat_task = asyncio.create_task(manager.heartbeat())
     telegram_task = asyncio.create_task(telegram.start())
 
-    try:
-        await asyncio.wait_for(telegram.send_message("🔵 <b>Mantle Vision</b> agent started — scanning chain..."), timeout=5)
-    except Exception:
-        pass
+    asyncio.create_task(telegram.send_message("Mantle Vision agent started — scanning chain..."))
 
     yield
 
@@ -267,7 +264,7 @@ app.include_router(scanner.router, prefix="/api")
 app.include_router(signals.router, prefix="/api")
 app.include_router(whales.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
-app.include_router(portfolio.router, prefix="/api")
+
 app.include_router(telegram_auth.router, prefix="/api")
 app.include_router(transactions.router, prefix="/api")
 app.include_router(wallet.router, prefix="/api")

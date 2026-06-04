@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.database import db
 from app.models.schemas import WhaleActivity, WhaleProfile
-from app.services.whale_score import whale_scorer
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +55,7 @@ async def list_whales(user_id: str = "", refresh: bool = False):
 
 @router.post("", response_model=WhaleProfile)
 async def add_whale(address: str, label: str = "", user_id: str = ""):
+    from app.services.whale_score import whale_scorer
     score = whale_scorer.score_single_wallet(address)
 
     if user_id:
@@ -108,6 +108,7 @@ async def remove_whale(address: str, user_id: str = ""):
 
 @router.get("/score/{address}", response_model=dict)
 async def get_whale_score(address: str):
+    from app.services.whale_score import whale_scorer
     score = whale_scorer.score_single_wallet(address)
     return score
 

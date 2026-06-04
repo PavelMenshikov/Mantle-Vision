@@ -207,6 +207,6 @@ Risk score combines: wallet age, tx frequency, value moved, cluster membership, 
 ---
 
 <p align="center">
-  Built for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a><br/>
+  Built with ☕ and ❤️ for <a href="https://dorahacks.io/hackathon/mantle-turing-test">Mantle Turing Test Hackathon 2026</a><br/>
   <i>Free tool. Man-in-the-loop. No trading signals. Just intelligence.</i>
 </p>

@@ -7,7 +7,6 @@ from typing import Any, Optional
 import numpy as np
 
 from app.models.schemas import WhaleProfile
-from app.services.mantle_scanner import mantle_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +259,7 @@ class WhaleScoreCalculator:
         return None
 
     def score_single_wallet(self, address: str) -> dict[str, Any]:
+        from app.services.mantle_scanner import mantle_scanner
         balance = mantle_scanner.get_balance(address)
         transfers = mantle_scanner.scan_large_transfers(
             max(0, mantle_scanner.get_latest_block() - 200),

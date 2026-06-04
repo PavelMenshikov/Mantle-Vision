@@ -10,7 +10,6 @@ from fastapi import APIRouter, HTTPException, Query
 from app.database import db
 from app.models.schemas import Signal, SignalDirection, SignalSource
 from app.services.analyzer import analyzer
-from app.services.telegram_bot import telegram
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +53,7 @@ async def signal_stats():
 
 async def push_signal(signal: Signal) -> None:
     from app.api.ws import manager
+    from app.services.telegram_bot import telegram
     data = signal.model_dump(mode="json")
     await manager.broadcast(data)
     await telegram.notify_signal(data)
