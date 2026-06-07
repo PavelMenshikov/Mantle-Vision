@@ -5,6 +5,7 @@ export const useTelegramStore = defineStore('telegram', () => {
   const connected = ref(false)
   const username = ref('')
   const code = ref('')
+  const sessionToken = ref('')
   const loading = ref(false)
   const error = ref('')
 
@@ -24,6 +25,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       const res = await fetch('/api/auth/telegram/init')
       const data = await res.json()
       code.value = data.code
+      sessionToken.value = data.session_token
       botUsername.value = data.bot_username || 'MantleVisionBot'
       startPolling()
     } catch (e) {
@@ -38,7 +40,8 @@ export const useTelegramStore = defineStore('telegram', () => {
     pollAbort = new AbortController()
     pollTimer = setInterval(async () => {
       try {
-        const res = await fetch('/api/auth/telegram/status', { signal: pollAbort.signal })
+        const url = `/api/auth/telegram/status?session_token=${encodeURIComponent(sessionToken.value)}`
+        const res = await fetch(url, { signal: pollAbort.signal })
         const data = await res.json()
         if (data.connected) {
           connected.value = true
@@ -65,6 +68,7 @@ export const useTelegramStore = defineStore('telegram', () => {
     connected.value = false
     username.value = ''
     code.value = ''
+    sessionToken.value = ''
     error.value = ''
     stopPolling()
   }

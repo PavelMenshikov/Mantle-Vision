@@ -18,6 +18,7 @@ class TelegramNotifier:
         self.dp: Any = None
         self._initialized = False
         self.auto_trade = False
+        self.bot_username: str = ""
 
         if not self.token:
             logger.warning("TELEGRAM_BOT_TOKEN not set — telegram notifier disabled")
@@ -39,6 +40,19 @@ class TelegramNotifier:
 
         @self.dp.message(Command("start"))
         async def cmd_start(message: Message) -> None:
+            if not message.from_user:
+                return
+            args = message.text.split(maxsplit=1)
+            code = args[1].strip() if len(args) > 1 else ""
+            if code:
+                chat_id = str(message.from_user.id)
+                username = message.from_user.username or ""
+                ok = verify_connection_code(code, chat_id, username)
+                if ok:
+                    await message.answer("✅ <b>Connected!</b>\nYour wallet is linked to Mantle Vision.")
+                else:
+                    await message.answer("❌ Invalid or expired code. Try again from the web app.")
+                return
             mode = "TRADE RECOMMENDATIONS" if self.auto_trade else "ANALYTICS"
             await message.answer(
                 "🤖 <b>Mantle Vision</b>\n\n"
@@ -83,21 +97,6 @@ class TelegramNotifier:
             m = "ON" if self.auto_trade else "OFF"
             await message.answer(f"Auto trade: <b>{m}</b>")
 
-        @self.dp.message(Command("connect"))
-        async def cmd_connect(message: Message) -> None:
-            if not message.from_user:
-                return
-            code = await verify_connection_code(str(message.from_user.id))
-            if code:
-                await message.answer(
-                    f"To link your wallet, visit:\n"
-                    f"http://localhost:3000/telegram?code={code}\n\n"
-                    f"Code: <code>{code}</code>\n"
-                    f"Valid for 5 minutes."
-                )
-            else:
-                await message.answer("Error generating code. Try again later.")
-
         self._initialized = True
         logger.info("Telegram notifier initialized")
 
@@ -107,6 +106,12 @@ class TelegramNotifier:
         self._ensure_init()
         if not self.dp or not self.bot:
             return
+        if not self.bot_username:
+            try:
+                bot_user = await self.bot.me()
+                self.bot_username = bot_user.username or ""
+            except Exception:
+                pass
         logger.info("Starting Telegram bot polling...")
         try:
             await self.dp.start_polling(self.bot)

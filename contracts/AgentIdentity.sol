@@ -25,7 +25,7 @@ contract AgentIdentity is ERC721URIStorage, Ownable {
     event MetadataSet(uint256 indexed agentId, string indexed metadataKey, bytes metadataValue);
     event AccuracyUpdated(uint256 indexed agentId, uint256 totalSignals, uint256 accurateSignals);
 
-    constructor() ERC721("Mantle Vision Agent", "MVA") Ownable() {}
+    constructor() ERC721("Mantle Vision Agent", "MVA") Ownable(msg.sender) {}
 
     modifier onlySignalRecorder() {
         require(_signalRecorder != address(0) && msg.sender == _signalRecorder, "AgentIdentity: not signal recorder");
@@ -48,7 +48,7 @@ contract AgentIdentity is ERC721URIStorage, Ownable {
     }
 
     function setAgentURI(uint256 agentId, string calldata newURI) external {
-        require(_isApprovedOrOwner(msg.sender, agentId), "AgentIdentity: not owner or approved");
+        require(_isAuthorized(ownerOf(agentId), msg.sender, agentId), "AgentIdentity: not owner or approved");
         _setTokenURI(agentId, newURI);
         emit URIUpdated(agentId, newURI, msg.sender);
     }
@@ -58,7 +58,7 @@ contract AgentIdentity is ERC721URIStorage, Ownable {
     }
 
     function setMetadata(uint256 agentId, string memory metadataKey, bytes memory metadataValue) external {
-        require(_isApprovedOrOwner(msg.sender, agentId), "AgentIdentity: not owner or approved");
+        require(_isAuthorized(ownerOf(agentId), msg.sender, agentId), "AgentIdentity: not owner or approved");
         _metadata[agentId][metadataKey] = metadataValue;
         emit MetadataSet(agentId, metadataKey, metadataValue);
     }

@@ -207,6 +207,29 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_funding_links_from ON funding_links(from_address);
             CREATE INDEX IF NOT EXISTS idx_funding_links_to ON funding_links(to_address);
             CREATE INDEX IF NOT EXISTS idx_anomaly_patterns_type ON anomaly_patterns(pattern_type);
+            CREATE TABLE IF NOT EXISTS auth_nonces (
+                address TEXT PRIMARY KEY,
+                nonce TEXT NOT NULL,
+                message TEXT NOT NULL,
+                expires_at REAL NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                token TEXT PRIMARY KEY,
+                address TEXT NOT NULL,
+                created_at REAL NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS telegram_pending (
+                code TEXT PRIMARY KEY,
+                session_token TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                expires_at REAL NOT NULL,
+                verified INTEGER DEFAULT 0,
+                chat_id TEXT DEFAULT '',
+                username TEXT DEFAULT ''
+            );
+
             CREATE INDEX IF NOT EXISTS idx_whale_profiles_value ON whale_profiles(total_value DESC);
         """)
         conn.commit()
@@ -255,6 +278,85 @@ class Database:
         )
         conn.commit()
         return conn.total_changes > 0
+
+    # --- Auth Nonces ---
+
+    def save_nonce(self, address: str, nonce: str, message: str, expires_at: float) -> None:
+        conn = self._get_conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO auth_nonces (address, nonce, message, expires_at) VALUES (?, ?, ?, ?)",
+            (address, nonce, message, expires_at),
+        )
+        conn.commit()
+
+    def get_nonce(self, address: str) -> Optional[dict[str, Any]]:
+        conn = self._get_conn()
+        row = conn.execute("SELECT * FROM auth_nonces WHERE address = ?", (address,)).fetchone()
+        return dict(row) if row else None
+
+    def delete_nonce(self, address: str) -> None:
+        conn = self._get_conn()
+        conn.execute("DELETE FROM auth_nonces WHERE address = ?", (address,))
+        conn.commit()
+
+    def clean_expired_nonces(self) -> None:
+        conn = self._get_conn()
+        conn.execute("DELETE FROM auth_nonces WHERE expires_at < ?", (__import__('time').time(),))
+        conn.commit()
+
+    # --- Auth Sessions ---
+
+    def save_session(self, token: str, address: str) -> None:
+        conn = self._get_conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO auth_sessions (token, address, created_at) VALUES (?, ?, ?)",
+            (token, address, __import__('time').time()),
+        )
+        conn.commit()
+
+    def get_session(self, token: str) -> Optional[dict[str, Any]]:
+        conn = self._get_conn()
+        row = conn.execute("SELECT * FROM auth_sessions WHERE token = ?", (token,)).fetchone()
+        return dict(row) if row else None
+
+    # --- Telegram Pending Connections ---
+
+    def save_telegram_pending(self, code: str, session_token: str, expires_at: float) -> None:
+        conn = self._get_conn()
+        conn.execute(
+            """INSERT OR REPLACE INTO telegram_pending
+               (code, session_token, created_at, expires_at, verified)
+               VALUES (?, ?, ?, ?, 0)""",
+            (code, session_token, __import__('time').time(), expires_at),
+        )
+        conn.commit()
+
+    def get_telegram_pending(self, code: str) -> Optional[dict[str, Any]]:
+        conn = self._get_conn()
+        row = conn.execute("SELECT * FROM telegram_pending WHERE code = ?", (code,)).fetchone()
+        return dict(row) if row else None
+
+    def verify_telegram_pending(self, code: str, chat_id: str, username: str) -> bool:
+        conn = self._get_conn()
+        conn.execute(
+            "UPDATE telegram_pending SET verified = 1, chat_id = ?, username = ? WHERE code = ?",
+            (chat_id, username, code),
+        )
+        conn.commit()
+        return conn.total_changes > 0
+
+    def get_verified_telegram_by_session(self, session_token: str) -> Optional[dict[str, Any]]:
+        conn = self._get_conn()
+        row = conn.execute(
+            "SELECT * FROM telegram_pending WHERE session_token = ? AND verified = 1 LIMIT 1",
+            (session_token,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def clean_expired_telegram(self) -> None:
+        conn = self._get_conn()
+        conn.execute("DELETE FROM telegram_pending WHERE expires_at < ?", (__import__('time').time(),))
+        conn.commit()
 
     # --- Signals ---
 

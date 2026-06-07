@@ -163,56 +163,76 @@ class AIAnalyzer:
         return self._altllm_client
 
     async def _call_ai(self, prompt: str, model: str = "gpt-4o-mini") -> Optional[str]:
-        altllm = self._get_altllm()
-        if altllm:
-            try:
-                resp = altllm.chat.completions.create(
-                    model="altllm-standard",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.3,
-                    response_format={"type": "json_object"},
-                    max_tokens=500,
-                )
-                logger.info("Using AltLLM Standard for analysis (crypto-native AI)")
-                return resp.choices[0].message.content
-            except Exception as e:
-                logger.warning(f"AltLLM call failed: {e}")
+        import asyncio
 
-        client = self._get_openai()
-        if client:
-            try:
-                resp = client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.3,
-                    response_format={"type": "json_object"},
-                )
-                logger.info("Using OpenAI for analysis")
-                return resp.choices[0].message.content
-            except Exception as e:
-                logger.warning(f"OpenAI call failed: {e}")
+        def _call_altllm() -> Optional[str]:
+            altllm = self._get_altllm()
+            if not altllm:
+                return None
+            resp = altllm.chat.completions.create(
+                model="altllm-standard",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"},
+                max_tokens=500,
+            )
+            logger.info("Using AltLLM Standard for analysis (crypto-native AI)")
+            return resp.choices[0].message.content
 
-        groq = self._get_groq()
-        if groq:
-            try:
-                resp = groq.chat.completions.create(
-                    model="mixtral-8x7b-32768",
-                    messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.3,
-                )
-                logger.info("Using Groq for analysis")
-                return resp.choices[0].message.content
-            except Exception as e:
-                logger.warning(f"Groq call failed: {e}")
+        def _call_openai() -> Optional[str]:
+            client = self._get_openai()
+            if not client:
+                return None
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"},
+            )
+            logger.info("Using OpenAI for analysis")
+            return resp.choices[0].message.content
+
+        def _call_groq() -> Optional[str]:
+            groq = self._get_groq()
+            if not groq:
+                return None
+            resp = groq.chat.completions.create(
+                model="mixtral-8x7b-32768",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
+            logger.info("Using Groq for analysis")
+            return resp.choices[0].message.content
+
+        try:
+            result = await asyncio.to_thread(_call_altllm)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"AltLLM call failed: {e}")
+
+        try:
+            result = await asyncio.to_thread(_call_openai)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"OpenAI call failed: {e}")
+
+        try:
+            result = await asyncio.to_thread(_call_groq)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning(f"Groq call failed: {e}")
 
         return None
 

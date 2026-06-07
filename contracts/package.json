@@ -1,0 +1,14 @@
+{
+  "name": "mantle-vision-contracts",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0",
+    "@openzeppelin/contracts": "^5.0.0"
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:sepolia": "hardhat run deploy/deploy.js --network mantleSepolia",
+    "deploy:mainnet": "hardhat run deploy/deploy.js --network mantleMainnet"
+  }
+}

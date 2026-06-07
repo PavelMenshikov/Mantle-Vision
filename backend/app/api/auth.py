@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.config import settings
@@ -22,10 +21,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-_nonces: dict[str, dict] = {}
-_sessions: dict[str, dict] = {}
-
-JWT_SECRET = settings.MANTLE_PRIVATE_KEY or secrets.token_hex(32)
+JWT_SECRET = settings.JWT_SECRET or settings.MANTLE_PRIVATE_KEY or secrets.token_hex(32)
 
 
 class NonceResponse(BaseModel):
@@ -63,7 +59,7 @@ def _create_token(address: str) -> str:
     payload = {
         "address": address,
         "iat": int(time.time()),
-        "exp": int(time.time()) + 86400 * 7,  # 7 days
+        "exp": int(time.time()) + 86400 * 7,
     }
     payload_str = json.dumps(payload, separators=(",", ":"))
     sig = hmac.new(JWT_SECRET.encode(), payload_str.encode(), hashlib.sha256).hexdigest()
@@ -89,28 +85,25 @@ def _verify_token(token: str) -> Optional[dict]:
 
 @router.get("/nonce/{address}", response_model=NonceResponse)
 async def get_nonce(address: str):
+    db.clean_expired_nonces()
     nonce = _generate_nonce()
     message = _create_message(address, nonce)
-    _nonces[address.lower()] = {
-        "nonce": nonce,
-        "message": message,
-        "expires": time.time() + 300,
-    }
+    db.save_nonce(address.lower(), nonce, message, time.time() + 300)
     return NonceResponse(nonce=nonce, message=message)
 
 
 @router.post("/verify")
 async def verify(req: VerifyRequest):
     addr = req.address.lower()
-    nonce_data = _nonces.pop(addr, None)
+    nonce_data = db.get_nonce(addr)
 
     if not nonce_data:
         raise HTTPException(400, "No nonce requested. Call /auth/nonce/{address} first.")
-    if time.time() > nonce_data["expires"]:
+    if time.time() > nonce_data["expires_at"]:
+        db.delete_nonce(addr)
         raise HTTPException(400, "Nonce expired. Request a new one.")
 
-    expected_msg = _create_message(req.address, nonce_data["nonce"])
-    if req.message != expected_msg:
+    if req.message != nonce_data["message"]:
         raise HTTPException(400, "Message mismatch. Use the exact message from /nonce.")
 
     try:
@@ -127,12 +120,10 @@ async def verify(req: VerifyRequest):
         logger.error(f"Signature verification failed: {e}")
         raise HTTPException(401, "Invalid signature.")
 
-    token = _create_token(req.address)
-    _sessions[token] = {
-        "address": req.address,
-        "created": time.time(),
-    }
+    db.delete_nonce(addr)
 
+    token = _create_token(req.address)
+    db.save_session(token, req.address)
     db.ensure_user(req.address.lower(), "metamask", req.address[:6] + "..." + req.address[-4:])
 
     exp = int(time.time()) + 86400 * 7

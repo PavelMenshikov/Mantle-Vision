@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     NANSEN_API_KEY: str = ""
     ELFA_AI_API_KEY: str = ""
 
+    JWT_SECRET: str = ""
+
     OPENAI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
 
