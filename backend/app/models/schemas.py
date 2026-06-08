@@ -109,6 +109,7 @@ class PnLDataPoint(BaseModel):
 
 
 class MantleTx(BaseModel):
+    model_config = {"populate_by_name": True}
     hash: str
     from_: str = Field(alias="from")
     to: str = ""

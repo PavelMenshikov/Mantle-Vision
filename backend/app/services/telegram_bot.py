@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.config import settings
@@ -41,18 +42,25 @@ class TelegramNotifier:
         @self.dp.message(Command("start"))
         async def cmd_start(message: Message) -> None:
             if not message.from_user:
+                logger.warning("/start from anonymous user")
                 return
             args = message.text.split(maxsplit=1)
             code = args[1].strip() if len(args) > 1 else ""
+            log_extra = f"chat_id={message.from_user.id} username={message.from_user.username}"
+            logger.info(f"/start received {log_extra} code={'...' + code[-4:] if code else 'none'}")
+
             if code:
                 chat_id = str(message.from_user.id)
                 username = message.from_user.username or ""
                 ok = verify_connection_code(code, chat_id, username)
                 if ok:
+                    logger.info(f"Telegram auth SUCCESS: {log_extra} code={code[:4]}...")
                     await message.answer("✅ <b>Connected!</b>\nYour wallet is linked to Mantle Vision.")
                 else:
-                    await message.answer("❌ Invalid or expired code. Try again from the web app.")
+                    logger.warning(f"Telegram auth FAILED: {log_extra} code={code[:4]}...")
+                    await message.answer("❌ Invalid or expired code. Go to the web app and generate a new one.")
                 return
+
             mode = "TRADE RECOMMENDATIONS" if self.auto_trade else "ANALYTICS"
             await message.answer(
                 "🤖 <b>Mantle Vision</b>\n\n"
@@ -62,56 +70,94 @@ class TelegramNotifier:
                 "\u2022 Whale behavior anomalies\n"
                 "\u2022 Reputation and link graphs\n"
                 "\u2022 Liquidity trap risks\n\n"
-                f"Mode: {mode}\n"
+                f"Mode: {mode}\n\n"
+                "To link your wallet:\n"
+                "1. Go to the Mantle Vision web app\n"
+                "2. Click 'Sign In with Telegram'\n"
+                "3. Click the bot link to send /start CODE\n\n"
                 "Commands:\n"
                 "/help \u2014 help\n"
                 "/status \u2014 agent status\n"
                 "/autotrade \u2014 toggle trade recommendations",
             )
 
+        @self.dp.message(Command("connect"))
+        async def cmd_connect(message: Message) -> None:
+            if not message.from_user:
+                logger.warning("/connect from anonymous user")
+                return
+            args = message.text.split(maxsplit=1)
+            code = args[1].strip() if len(args) > 1 else ""
+            log_extra = f"chat_id={message.from_user.id} username={message.from_user.username}"
+
+            if not code:
+                logger.info(f"/connect without code {log_extra}")
+                await message.answer(
+                    "Send /connect <code>CODE</code> with the code from the web app.\n\n"
+                    "Example: /connect a1b2c3d4\n\n"
+                    "Generate a new code at: https://mantle-vision.app"
+                )
+                return
+
+            chat_id = str(message.from_user.id)
+            username = message.from_user.username or ""
+            ok = verify_connection_code(code, chat_id, username)
+            if ok:
+                logger.info(f"Telegram connect SUCCESS: {log_extra} code={code[:4]}...")
+                await message.answer("✅ <b>Connected!</b>\nYour wallet is linked to Mantle Vision.")
+            else:
+                logger.warning(f"Telegram connect FAILED: {log_extra} code={code[:4]}...")
+                await message.answer("❌ Invalid or expired code. Generate a new one from the web app.")
+
         @self.dp.message(Command("help"))
         async def cmd_help(message: Message) -> None:
+            log_extra = f"chat_id={message.from_user.id}" if message.from_user else "unknown"
+            logger.info(f"/help {log_extra}")
             await message.answer(
                 "<b>Mantle Vision \u2014 Telegram Bot</b>\n\n"
-                "Bot sends automatic notifications.\n\n"
-                "<b>Modes:</b>\n"
-                "\u2022 Analytics (OFF) \u2014 alerts only for anomalies and risks\n"
-                "\u2022 Recommendations (ON) \u2014 +trade suggestions\n\n"
-                "Commands:\n"
-                "/start \u2014 welcome\n"
-                "/help \u2014 help\n"
+                "AI-powered wallet intelligence for Mantle Network.\n\n"
+                "<b>Connection:</b>\n"
+                "Go to the web app \u2192 Sign In with Telegram \u2192 click the bot link\n\n"
+                "<b>Commands:</b>\n"
+                "/start \u2014 welcome & link wallet\n"
+                "/connect CODE \u2014 connect using code from web app\n"
                 "/status \u2014 current mode & status\n"
                 "/autotrade \u2014 toggle auto-trade mode\n"
-                "/connect \u2014 link your MetaMask\n\n"
+                "/help \u2014 this help\n\n"
                 "Bot monitors MNT, mETH, USDC pairs.",
             )
 
         @self.dp.message(Command("status"))
         async def cmd_status(message: Message) -> None:
             m = "Recommendations" if self.auto_trade else "Analytics"
+            logger.info(f"/status: mode={m} auto_trade={self.auto_trade}")
             await message.answer(f"<b>Mode:</b> {m}\n<b>Auto trade:</b> {'ON' if self.auto_trade else 'OFF'}")
 
         @self.dp.message(Command("autotrade"))
         async def cmd_autotrade(message: Message) -> None:
             self.auto_trade = not self.auto_trade
             m = "ON" if self.auto_trade else "OFF"
+            logger.info(f"/autotrade toggled: {m}")
             await message.answer(f"Auto trade: <b>{m}</b>")
 
         self._initialized = True
-        logger.info("Telegram notifier initialized")
+        logger.info("Telegram bot handlers registered")
 
     async def start(self) -> None:
         if not self.token:
+            logger.warning("TELEGRAM_BOT_TOKEN not set — bot not started")
             return
         self._ensure_init()
         if not self.dp or not self.bot:
+            logger.error("Telegram bot not initialized (dp or bot is None)")
             return
         if not self.bot_username:
             try:
                 bot_user = await self.bot.me()
                 self.bot_username = bot_user.username or ""
-            except Exception:
-                pass
+                logger.info(f"Bot username resolved: @{self.bot_username}")
+            except Exception as e:
+                logger.warning(f"Failed to get bot username via API: {e}")
         logger.info("Starting Telegram bot polling...")
         try:
             await self.dp.start_polling(self.bot)
@@ -125,13 +171,16 @@ class TelegramNotifier:
 
     async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
         if not self.token:
+            logger.debug("send_message skipped: TELEGRAM_BOT_TOKEN not set")
             return False
         self._ensure_init()
         if not self.bot:
+            logger.warning("send_message skipped: bot not initialized")
             return False
 
         chat_id = self.chat_id
         if not chat_id:
+            logger.debug("send_message skipped: TELEGRAM_CHAT_ID not set")
             return False
 
         try:
@@ -139,9 +188,10 @@ class TelegramNotifier:
                 self.bot.send_message(chat_id, text, parse_mode=parse_mode),
                 timeout=5,
             )
+            logger.debug(f"Message sent to chat_id={chat_id} ({len(text)} chars)")
             return True
         except asyncio.TimeoutError:
-            logger.warning("Telegram send_message timed out (blocked?)")
+            logger.warning(f"Telegram send_message timed out (chat_id={chat_id})")
             return False
         except Exception as e:
             logger.error(f"Failed to send Telegram message: {e}")
@@ -156,6 +206,7 @@ class TelegramNotifier:
             f"{signal.get('reasoning', '')}\n"
             f"#{signal['asset']} #{signal['direction']}"
         )
+        logger.info(f"Notifying signal: {signal['direction']} {signal['asset']} confidence={signal['confidence']:.2f}")
         await self.send_message(text)
 
     async def notify_whale_alert(self, data: dict[str, Any]) -> None:
@@ -173,6 +224,7 @@ class TelegramNotifier:
             f"Volume: {vol:.2f} ETH\n"
             f"{tag_str}"
         )
+        logger.info(f"Notifying whale alert: {addr} type={wtype} score={score:.2f}")
         await self.send_message(text)
 
     async def notify_anomaly(self, anomaly: dict[str, Any]) -> None:
@@ -189,6 +241,7 @@ class TelegramNotifier:
             f"Volume: ${value:,.0f}\n"
             f"{details}"
         )
+        logger.info(f"Notifying anomaly: {addr} score={score:.2f}")
         await self.send_message(text)
 
 

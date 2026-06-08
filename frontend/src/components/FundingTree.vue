@@ -48,7 +48,7 @@ const byLevel = computed(() => {
   return Object.entries(groups).sort((a, b) => Number(a[0]) - Number(b[0]))
 })
 
-const explorerUrl = (a) => `https://mantlescan.info/address/${a}`
+const explorerUrl = (a) => `https://mantlescan.xyz/address/${a}`
 </script>
 
 <template>

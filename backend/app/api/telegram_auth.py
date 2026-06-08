@@ -34,9 +34,11 @@ async def init_telegram_connection():
     session_token = secrets.token_hex(16)
     db.clean_expired_telegram()
     db.save_telegram_pending(code, session_token, time.time() + 300)
+    logger.info(f"Telegram init: code={code} session_token={session_token[:8]}...")
 
     from app.services.telegram_bot import telegram
     bot_username = telegram.bot_username or "dorahacksmantle_bot"
+    logger.info(f"Telegram init: bot_username={bot_username}")
     return InitResponse(
         code=code,
         session_token=session_token,
@@ -48,16 +50,19 @@ async def init_telegram_connection():
 @router.get("/status", response_model=StatusResponse)
 async def check_telegram_status(session_token: str = ""):
     if not session_token:
+        logger.debug("Telegram status check: no session_token")
         return StatusResponse(connected=False)
 
     data = db.get_verified_telegram_by_session(session_token)
     if data:
+        logger.info(f"Telegram status: connected chat_id={data.get('chat_id')} username={data.get('username')}")
         return StatusResponse(
             connected=True,
             chat_id=data.get("chat_id"),
             username=data.get("username"),
         )
 
+    logger.debug(f"Telegram status: not yet connected for session {session_token[:8]}...")
     return StatusResponse(connected=False)
 
 

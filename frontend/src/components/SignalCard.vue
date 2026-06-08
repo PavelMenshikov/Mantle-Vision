@@ -53,7 +53,7 @@ const confidenceColor = computed(() => {
   return 'text-cyber-muted'
 })
 
-const explorerUrl = 'https://sepolia.mantlescan.xyz'
+const explorerUrl = 'https://mantlescan.xyz'
 
 const reasoningHtml = computed(() => {
   let text = props.signal.reasoning || ''

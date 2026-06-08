@@ -83,7 +83,7 @@ function addrShort(a) {
 }
 
 function explorerUrl(a) {
-  return `https://mantlescan.info/address/${a}`
+  return `https://mantlescan.xyz/address/${a}`
 }
 
 const riskColor = computed(() => {
@@ -140,7 +140,7 @@ function formatEth(val) {
 }
 
 function txUrl(hash) {
-  return `https://mantlescan.info/tx/${hash}`
+  return `https://mantlescan.xyz/tx/${hash}`
 }
 </script>
 
@@ -324,12 +324,12 @@ function txUrl(hash) {
           <div v-for="tx in txs" :key="tx.hash"
             class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-white/[0.02] text-xs font-mono transition-colors">
             <span class="text-cyber-muted w-10 flex-shrink-0">{{ formatTime(tx.timestamp) }}</span>
-            <a :href="`https://mantlescan.info/address/${tx.from}`" target="_blank"
+            <a :href="`https://mantlescan.xyz/address/${tx.from}`" target="_blank"
               class="text-cyber-text hover:text-cyber-accent transition-colors flex-shrink-0">
               {{ addrShort(tx.from) }}
             </a>
             <span class="text-cyber-muted/30 mx-1">→</span>
-            <a v-if="tx.to" :href="`https://mantlescan.info/address/${tx.to}`" target="_blank"
+            <a v-if="tx.to" :href="`https://mantlescan.xyz/address/${tx.to}`" target="_blank"
               class="text-cyber-text hover:text-cyber-accent transition-colors flex-shrink-0">
               {{ addrShort(tx.to) }}
             </a>

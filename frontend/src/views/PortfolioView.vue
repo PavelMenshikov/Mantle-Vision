@@ -47,11 +47,11 @@ function addrShort(addr) {
 }
 
 function txUrl(hash) {
-  return `https://mantlescan.info/tx/${hash}`
+  return `https://mantlescan.xyz/tx/${hash}`
 }
 
 function addrUrl(addr) {
-  return `https://mantlescan.info/address/${addr}`
+  return `https://mantlescan.xyz/address/${addr}`
 }
 
 function formatTime(ts) {

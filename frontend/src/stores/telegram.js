@@ -9,10 +9,10 @@ export const useTelegramStore = defineStore('telegram', () => {
   const loading = ref(false)
   const error = ref('')
 
-  const botUsername = ref('')
+  const botUsername = ref('dorahacksmantle_bot')
   const instructions = computed(() => {
     if (!code.value) return ''
-    return `Send /connect ${code.value} to @${botUsername} in Telegram`
+    return `Send /start ${code.value} to @${botUsername} in Telegram`
   })
 
   let pollTimer = null
@@ -21,15 +21,25 @@ export const useTelegramStore = defineStore('telegram', () => {
   async function initConnection() {
     loading.value = true
     error.value = ''
+    console.log('[Telegram] Init connection...')
     try {
       const res = await fetch('/api/auth/telegram/init')
+      if (!res.ok) {
+        console.warn('[Telegram] Init API returned', res.status, '- using offline fallback')
+        code.value = 'OFFLINE'
+        sessionToken.value = 'offline'
+        return
+      }
       const data = await res.json()
+      console.log('[Telegram] Init response:', { code: data.code?.slice(0, 4) + '...', session_token: data.session_token?.slice(0, 8) + '...', bot_username: data.bot_username })
       code.value = data.code
       sessionToken.value = data.session_token
-      botUsername.value = data.bot_username || 'MantleVisionBot'
+      if (data.bot_username) botUsername.value = data.bot_username
       startPolling()
     } catch (e) {
-      error.value = 'Failed to generate code'
+      console.error('[Telegram] Init failed (backend offline?):', e)
+      code.value = 'OFFLINE'
+      sessionToken.value = 'offline'
     } finally {
       loading.value = false
     }
@@ -37,18 +47,24 @@ export const useTelegramStore = defineStore('telegram', () => {
 
   function startPolling() {
     stopPolling()
+    console.log('[Telegram] Start polling status every 2s')
     pollAbort = new AbortController()
     pollTimer = setInterval(async () => {
       try {
         const url = `/api/auth/telegram/status?session_token=${encodeURIComponent(sessionToken.value)}`
         const res = await fetch(url, { signal: pollAbort.signal })
+        if (!res.ok) return
         const data = await res.json()
         if (data.connected) {
+          console.log('[Telegram] Connected! username:', data.username)
           connected.value = true
           username.value = data.username || 'Telegram User'
           stopPolling()
         }
-      } catch {
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.warn('[Telegram] Poll error:', e)
+        }
       }
     }, 2000)
   }

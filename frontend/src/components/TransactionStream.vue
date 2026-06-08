@@ -50,11 +50,11 @@ function addrShort(addr) {
 }
 
 function txUrl(hash) {
-  return `https://mantlescan.info/tx/${hash}`
+  return `https://mantlescan.xyz/tx/${hash}`
 }
 
 function addrUrl(addr) {
-  return `https://mantlescan.info/address/${addr}`
+  return `https://mantlescan.xyz/address/${addr}`
 }
 
 function formatTime(ts) {
@@ -68,7 +68,8 @@ function formatTime(ts) {
 }
 
 function formatEth(val) {
-  if (!val) return ''
+  if (val === null || val === undefined) return ''
+  if (val === 0) return '0.000'
   if (val >= 1000) return val.toFixed(1)
   if (val >= 1) return val.toFixed(3)
   if (val >= 0.001) return val.toFixed(5)
@@ -142,7 +143,7 @@ function formatEth(val) {
           </a>
           <span v-else class="text-cyber-muted flex-shrink-0">deploy</span>
 
-          <span v-if="tx.value_eth > 0" class="ml-auto text-cyber-accent font-medium flex-shrink-0">
+          <span class="ml-auto text-cyber-accent font-medium flex-shrink-0">
             {{ formatEth(tx.value_eth) }} MNT
           </span>
 

@@ -17,12 +17,15 @@ from app.database import db
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True,
 )
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("watchfiles").setLevel(logging.WARNING)
 logging.getLogger("websockets").setLevel(logging.WARNING)
+logging.getLogger("aiogram").setLevel(logging.INFO)
+logging.getLogger("aiohttp").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
@@ -69,6 +72,7 @@ async def signal_scanner() -> None:
     from app.services.trading_agent import trading_agent
 
     _db = db
+    cycle_count = 0
 
     while True:
         try:
@@ -85,6 +89,48 @@ async def signal_scanner() -> None:
             prices = await get_all_prices()
             _db.save_prices(prices)
 
+            # ════════════════════════════════════════════
+            # TRACKED WALLET MONITORING
+            # ════════════════════════════════════════════
+            tracked_addresses = _db.get_all_whale_addresses()
+            if tracked_addresses:
+                # Check if any tracked wallet appears in recent transfers
+                active_tracked = []
+                for tx in transfers:
+                    frm = tx.get("from", "").lower()
+                    to = tx.get("to", "").lower()
+                    for addr in [frm, to]:
+                        if addr in tracked_addresses and addr not in [a["address"] for a in active_tracked]:
+                            profile = _db.get_whale_by_address(addr)
+                            active_tracked.append({"address": addr, "value_eth": tx.get("value_eth", 0), "profile": profile})
+
+                for wt in active_tracked:
+                    logger.info(f"Tracked wallet active: {wt['address'][:10]}... moved {wt['value_eth']} MNT")
+                    from app.services.telegram_bot import telegram
+                    if telegram:
+                        label = (wt["profile"] or {}).get("label", wt["address"][:10])
+                        await telegram.send_message(
+                            f"👁 <b>Tracked wallet active</b>\n"
+                            f"└ {label}: {wt['address'][:10]}...\n"
+                            f"└ Moved {wt['value_eth']} MNT\n"
+                            f"└ /signals"
+                        )
+
+            # Also periodically re-check all tracked wallets (every ~30 min)
+            cycle_count += 1
+            if cycle_count >= 10 and tracked_addresses:
+                cycle_count = 0
+                logger.info(f"Re-checking {len(tracked_addresses)} tracked wallets...")
+                for addr in tracked_addresses:
+                    try:
+                        balance = mantle_scanner.get_balance(addr)
+                        profile = _db.get_whale_by_address(addr)
+                        if profile and profile.get("total_value", 0) != balance:
+                            logger.info(f"Tracked {addr[:10]}... balance changed: {profile['total_value']} -> {balance}")
+                            _db.upsert_whale_from_scores(addr, {"total_volume": balance, "tags": ["active", "tracked"]})
+                    except Exception:
+                        continue
+
             # Trigger: whale movement or significant protocol event
             has_trigger = len(transfers) > 0 or len(protocol_events) > 0
 
@@ -97,6 +143,7 @@ async def signal_scanner() -> None:
                 from app.services.cluster_analyzer import cluster_analyzer
                 from app.services.whale_score import whale_scorer
 
+                whale_scores = {}
                 if transfers:
                     top_addr = transfers[0].get("from", "")
                     if top_addr:
@@ -107,6 +154,15 @@ async def signal_scanner() -> None:
                         cluster = _db.find_cluster_by_address(top_addr)
                         if cluster:
                             wallet_context = {"cluster": cluster}
+
+                # ════════════════════════════════════════════
+                # AUTO-SAVE CATEGORIZED WALLETS
+                # ════════════════════════════════════════════
+                now = datetime.now(timezone.utc).isoformat()
+                for addr, score in whale_scores.items():
+                    _db.upsert_whale_from_scores(addr, score, now)
+                if whale_scores:
+                    logger.info(f"Auto-saved {len(whale_scores)} categorized wallets to tracking DB")
 
                 # Market snapshot for broader context
                 from app.services.price_feed import get_market_snapshot
@@ -157,7 +213,6 @@ async def signal_scanner() -> None:
                 # Notify Telegram (aggregated for smart money)
                 if transfers:
                     from app.services.telegram_bot import telegram
-                    from app.services.whale_score import whale_scorer
 
                     primary_whale_data = {
                         "address": transfers[0]["from"],
@@ -205,19 +260,33 @@ async def signal_scanner() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    logger.info("=" * 50)
     logger.info("Mantle Vision backend starting")
+    logger.info(f"Mode: {'DEMO' if settings.DEMO_MODE else 'LIVE'}")
+    logger.info(f"Telegram token: {'SET' if settings.TELEGRAM_BOT_TOKEN else 'NOT SET'}")
+    logger.info(f"Telegram chat_id: {'SET' if settings.TELEGRAM_CHAT_ID else 'NOT SET'}")
+    logger.info(f"OpenAI key: {'SET' if settings.OPENAI_API_KEY else 'NOT SET'}")
+    logger.info(f"RPC URL: {settings.MANTLE_RPC_URL}")
+    logger.info("=" * 50)
+
     from app.services.telegram_bot import telegram
     scanner_task = asyncio.create_task(signal_scanner())
     heartbeat_task = asyncio.create_task(manager.heartbeat())
-    telegram_task = asyncio.create_task(telegram.start())
 
-    asyncio.create_task(telegram.send_message("Mantle Vision agent started — scanning chain..."))
+    if settings.TELEGRAM_BOT_TOKEN:
+        telegram_task = asyncio.create_task(telegram.start())
+        asyncio.create_task(telegram.send_message("Mantle Vision agent started — scanning chain..."))
+        logger.info("Telegram bot task created")
+    else:
+        telegram_task = None
+        logger.warning("Telegram bot disabled — TELEGRAM_BOT_TOKEN not set")
 
     yield
 
     scanner_task.cancel()
     heartbeat_task.cancel()
-    telegram_task.cancel()
+    if telegram_task:
+        telegram_task.cancel()
     try:
         await scanner_task
     except asyncio.CancelledError:
@@ -226,12 +295,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await heartbeat_task
     except asyncio.CancelledError:
         pass
-    try:
-        await telegram_task
-    except asyncio.CancelledError:
-        pass
+    if telegram_task:
+        try:
+            await telegram_task
+        except asyncio.CancelledError:
+            pass
 
-    await telegram.stop()
+    if settings.TELEGRAM_BOT_TOKEN:
+        await telegram.stop()
     logger.info("Mantle Vision backend stopped")
 
 

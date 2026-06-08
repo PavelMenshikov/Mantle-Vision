@@ -683,6 +683,40 @@ class Database:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    # --- Auto-tracked Whales ---
+
+    def upsert_whale_from_scores(self, address: str, score_dict: dict, current_time: str = None) -> None:
+        conn = self._get_conn()
+        now = current_time or datetime.now(timezone.utc).isoformat()
+        addr = address.lower()
+        existing = conn.execute("SELECT * FROM whale_profiles WHERE address = ?", (addr,)).fetchone()
+
+        tags = score_dict.get("tags", [])
+        total_value = score_dict.get("total_volume", 0)
+        risk_score = score_dict.get("sentinel_score") or score_dict.get("whale_score", 0.5)
+        wallet_type = score_dict.get("wallet_type", "active")
+        label = score_dict.get("label", f"{wallet_type}:{addr[:8]}")
+
+        if existing:
+            existing_tags = json.loads(existing["tags"]) if isinstance(existing["tags"], str) else existing.get("tags", [])
+            merged_tags = list(set(existing_tags + tags))
+            conn.execute(
+                """UPDATE whale_profiles SET total_value=?, risk_score=?, tags=?, last_active=?, updated_at=?, label=?
+                   WHERE address=?""",
+                (total_value, risk_score, json.dumps(merged_tags), now, now, label, addr),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO whale_profiles (address, label, total_value, risk_score, tags, last_active, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (addr, label, total_value, risk_score, json.dumps(tags), now, now),
+            )
+        conn.commit()
+
+    def get_all_whale_addresses(self) -> list[str]:
+        conn = self._get_conn()
+        return [r["address"] for r in conn.execute("SELECT address FROM whale_profiles").fetchall()]
+
     def close(self) -> None:
         if hasattr(self._local, "conn") and self._local.conn:
             self._local.conn.close()
