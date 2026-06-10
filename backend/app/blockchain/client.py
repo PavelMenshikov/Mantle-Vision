@@ -84,7 +84,7 @@ AGENT_CONTRACT_ABI = [
 
 class MantleClient:
     def __init__(self) -> None:
-        self.rpc_url = settings.MANTLE_RPC_URL
+        self.rpc_url = settings.MANTLE_CONTRACT_RPC_URL
         self.chain_id = settings.MANTLE_CHAIN_ID
         self.private_key = settings.MANTLE_PRIVATE_KEY
         self.agent_contract_addr = settings.AGENT_CONTRACT_ADDRESS

@@ -104,7 +104,8 @@ class MantleScanner:
                 return []
 
         transfers = []
-        for block_num in range(from_block, min(to_block, from_block + 20) + 1):
+        limit = 500
+        for block_num in range(from_block, min(to_block, from_block + limit) + 1):
             try:
                 block = self.w3.eth.get_block(block_num, full_transactions=True)
                 for tx in block.get("transactions", []):
@@ -141,7 +142,7 @@ class MantleScanner:
         events = []
         protocol_addresses = {v.lower(): k for k, v in KNOWN_PROTOCOLS.items()}
 
-        for block_num in range(from_block, min(to_block, from_block + 20) + 1):
+        for block_num in range(from_block, min(to_block, from_block + 500) + 1):
             try:
                 block = self.w3.eth.get_block(block_num, full_transactions=True)
                 for tx in block.get("transactions", []):

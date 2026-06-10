@@ -81,7 +81,8 @@ async def signal_scanner() -> None:
                 await asyncio.sleep(30)
                 continue
 
-            from_block = max(0, latest - 20)
+            scan_window = 100 if not mantle_scanner.is_sepolia else 20
+            from_block = max(0, latest - scan_window)
             to_block = latest
 
             threshold = mantle_scanner.whale_min_value if mantle_scanner.is_sepolia else 10.0
