@@ -130,6 +130,18 @@ Open [http://localhost:3000](http://localhost:3000) — log in with MetaMask or 
 
 ---
 
+## Deployed Contracts (Mantle Sepolia)
+
+| Contract | Address | Explorer |
+|----------|---------|----------|
+| **AgentIdentity** | `0x77a5CeADd28E23C1fFA85ED4814Bf29C8c31F21f` | [View](https://sepolia.mantlescan.xyz/address/0x77a5CeADd28E23C1fFA85ED4814Bf29C8c31F21f) |
+| **SignalRecorder** | `0xcb96A0892E8b45B0aF94B77cEc7D133daaEb1ce9` | [View](https://sepolia.mantlescan.xyz/address/0xcb96A0892E8b45B0aF94B77cEc7D133daaEb1ce9) |
+
+Network: **Mantle Sepolia** (Chain ID: **5003**)  
+Telegram bot: [@dorahacksmantle_bot](https://t.me/dorahacksmantle_bot) — get real-time alerts on anomalies and whale movements.
+
+---
+
 ## API
 
 | Method | Path | Description |
@@ -189,10 +201,10 @@ Risk score combines: wallet age, tx frequency, value moved, cluster membership, 
 - [ ] Historical activity replay
 
 ### Phase 4 — Ecosystem
+- [x] ERC-8004 agent identity deployment (AgentIdentity + SignalRecorder on Sepolia)
 - [ ] Nansen API integration ($7K sponsor credits)
 - [ ] Elfa AI social sentiment ($36K credits)
 - [ ] Community wallet tagging
-- [ ] ERC-8004 agent identity deployment
 
 ---
 
@@ -201,7 +213,7 @@ Risk score combines: wallet age, tx frequency, value moved, cluster membership, 
 **Frontend:** Vue 3, Vite, Tailwind CSS, Pinia, Lucide Icons  
 **Backend:** FastAPI, Web3.py, OpenAI SDK, scikit-learn, NetworkX  
 **AI:** OpenAI GPT-4o-mini, Groq Mixtral, AltLLM (crypto-native)  
-**Blockchain:** Mantle Network (EVM L2) — Mainnet + Sepolia  
+**Blockchain:** Mantle Network (EVM L2) — Sepolia (Chain ID: 5003)  
 **Infra:** Docker, SQLite, WebSocket
 
 ---

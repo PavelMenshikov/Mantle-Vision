@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     MANTLE_RPC_URL: str = "https://rpc.mantle.xyz"
-    MANTLE_CHAIN_ID: int = 5000
+    MANTLE_CHAIN_ID: int = 5003
     MANTLE_PRIVATE_KEY: str = ""
 
     NANSEN_API_KEY: str = ""

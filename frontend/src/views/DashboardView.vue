@@ -1,21 +1,30 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import StatsGrid from '@/components/StatsGrid.vue'
 import SignalCard from '@/components/SignalCard.vue'
 import TransactionStream from '@/components/TransactionStream.vue'
 import TokenPrice from '@/components/TokenPrice.vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
-import { RefreshCw, Zap, Eye } from 'lucide-vue-next'
+import { RefreshCw, Zap, Eye, Search } from 'lucide-vue-next'
 import { useSignalsStore } from '@/stores/signals'
 
+const router = useRouter()
 const signals = useSignalsStore()
 
 const scannerStatus = ref(null)
+const whaleCount = ref('—')
 let abortCtrl = null
+
+const demoWallets = [
+  { address: '0xcEf7c66AEb06265FB92FcB6C7184115428416c3f', label: 'Deployer Wallet' },
+  { address: '0x77a5CeADd28E23C1fFA85ED4814Bf29C8c31F21f', label: 'AgentIdentity Contract' },
+]
 
 onMounted(() => {
   fetchScannerStatus()
+  fetchWhaleCount()
 })
 
 onUnmounted(() => {
@@ -31,9 +40,19 @@ async function fetchScannerStatus() {
   } catch {}
 }
 
+async function fetchWhaleCount() {
+  try {
+    const res = await fetch('/api/whales')
+    if (res.ok) {
+      const data = await res.json()
+      whaleCount.value = data.length
+    }
+  } catch {}
+}
+
 const stats = computed(() => [
   { label: 'Total Signals', value: signals.signalCount, icon: 'signals', accent: 'green', change: 12 },
-  { label: 'Active Whales', value: '—', icon: 'whales', accent: 'blue', change: 0 },
+  { label: 'Active Whales', value: whaleCount.value, icon: 'whales', accent: 'blue', change: 0 },
   { label: 'Network Uptime', value: '99.9%', icon: 'network', accent: 'amber', change: 0 },
   { label: 'Scanner Status', value: scannerStatus.value?.scanner_active ? 'Active' : '—', icon: 'signals', accent: scannerStatus.value?.scanner_active ? 'green' : 'red', change: 0 },
 ])
@@ -87,6 +106,24 @@ function formatTime(ts) {
       </div>
 
       <div class="space-y-4">
+        <GlassCard accent="electric">
+          <h3 class="text-sm font-display font-semibold text-cyber-text mb-3 flex items-center gap-2">
+            <Search class="w-4 h-4 text-cyber-electric" />
+            Try These Wallets
+          </h3>
+          <div class="space-y-2">
+            <button
+              v-for="w in demoWallets"
+              :key="w.address"
+              @click="router.push(`/wallet/${w.address}`)"
+              class="w-full text-left px-3 py-2 rounded-lg border border-white/5 hover:border-cyber-electric/30 hover:bg-cyber-electric/5 transition-all text-xs font-mono group"
+            >
+              <div class="text-cyber-text group-hover:text-cyber-electric transition-colors">{{ w.label }}</div>
+              <div class="text-cyber-muted truncate mt-0.5">{{ w.address.slice(0, 10) }}...{{ w.address.slice(-6) }}</div>
+            </button>
+          </div>
+        </GlassCard>
+
         <TokenPrice />
 
         <GlassCard accent="blue">

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
+from web3 import Web3
 
 from app.database import db
 from app.models.schemas import WhaleActivity, WhaleProfile
@@ -118,4 +119,50 @@ async def whale_activity(
     address: str,
     limit: int = Query(20, ge=1, le=100),
 ):
-    return []
+    from app.services.mantle_scanner import mantle_scanner
+
+    if not mantle_scanner.w3 or not mantle_scanner.is_connected:
+        mantle_scanner._connect()
+    if not mantle_scanner.w3:
+        return []
+
+    try:
+        checksum = Web3.to_checksum_address(address)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid address")
+
+    latest = mantle_scanner.get_latest_block()
+    if not latest:
+        return []
+
+    activities = []
+    from_block = max(0, latest - 200)
+    for block_num in range(from_block, latest + 1):
+        if len(activities) >= limit:
+            break
+        try:
+            block = mantle_scanner.w3.eth.get_block(block_num, full_transactions=True)
+            if not block or not block.get("transactions"):
+                continue
+            for tx in block.get("transactions", []):
+                tx_from = (tx.get("from") or "").lower()
+                tx_to = (tx.get("to") or "").lower()
+                target = checksum.lower()
+                if tx_from != target and tx_to != target:
+                    continue
+                value_eth = float(Web3.from_wei(tx.get("value", 0) or 0, "ether"))
+                activities.append(WhaleActivity(
+                    txHash=tx["hash"].hex(),
+                    method="transfer",
+                    value=value_eth,
+                    timestamp=datetime.fromtimestamp(block.get("timestamp", 0), tz=timezone.utc),
+                    token="MNT",
+                    to=tx_to,
+                    from_=tx_from,
+                ))
+                if len(activities) >= limit:
+                    break
+        except Exception:
+            continue
+
+    return activities

@@ -14,9 +14,9 @@ const themeOptions = [
 ]
 
 const networkInfo = {
-  chain: 'Mantle',
-  chainId: 5000,
-  rpc: 'https://rpc.mantle.xyz',
+  chain: 'Mantle Sepolia',
+  chainId: 5003,
+  rpc: 'https://rpc.sepolia.mantle.xyz',
   blockTime: '1.2s',
   gasPrice: '0.015 Gwei',
 }

@@ -39,7 +39,7 @@ if DOT_ENV.exists():
             env_vars[k.strip()] = v.strip().strip('"').strip("'")
 
 MANTLE_RPC_URL = env_vars.get("MANTLE_RPC_URL", "https://rpc.mantle.xyz")
-MANTLE_CHAIN_ID = int(env_vars.get("MANTLE_CHAIN_ID", "5000"))
+MANTLE_CHAIN_ID = int(env_vars.get("MANTLE_CHAIN_ID", "5003"))
 MANTLE_PRIVATE_KEY = env_vars.get("MANTLE_PRIVATE_KEY", "")
 
 # ── Helpers ─────────────────────────────────────────────────────────────
