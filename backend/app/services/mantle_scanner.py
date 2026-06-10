@@ -22,6 +22,8 @@ KNOWN_PROTOCOLS: dict[str, str] = {
 
 WHALE_MIN_VALUE_ETH = 50.0
 
+SEPOLIA_CHAIN_ID = 5003
+
 
 class MantleScanner:
     """Scans Mantle blockchain for real on-chain activity."""
@@ -29,6 +31,7 @@ class MantleScanner:
     def __init__(self, w3: Optional[Web3] = None) -> None:
         self.w3 = w3
         self._connected = False
+        self._chain_id = 0
         if self.w3 is None:
             self._connect()
 
@@ -40,8 +43,8 @@ class MantleScanner:
             ))
             self._connected = self.w3.is_connected()
             if self._connected:
-                chain_id = self.w3.eth.chain_id
-                logger.info(f"MantleScanner: connected (chain: {chain_id})")
+                self._chain_id = self.w3.eth.chain_id
+                logger.info(f"MantleScanner: connected (chain: {self._chain_id})")
             else:
                 logger.warning("MantleScanner: could not connect to RPC")
             return self._connected
@@ -51,12 +54,16 @@ class MantleScanner:
             return False
 
     @property
-    def is_connected(self) -> bool:
-        if self.w3:
-            return self.w3.is_connected()
-        return False
+    def chain_id(self) -> int:
+        return self._chain_id
 
-    def get_latest_block(self) -> int:
+    @property
+    def is_sepolia(self) -> bool:
+        return self._chain_id == SEPOLIA_CHAIN_ID
+
+    @property
+    def whale_min_value(self) -> float:
+        return 0.01 if self.is_sepolia else WHALE_MIN_VALUE_ETH
         if not self.w3 or not self.is_connected:
             if not self._connect():
                 return 0

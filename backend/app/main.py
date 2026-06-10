@@ -81,8 +81,11 @@ async def signal_scanner() -> None:
                 await asyncio.sleep(30)
                 continue
 
-            from_block = max(0, latest - 50)
-            transfers = mantle_scanner.scan_large_transfers(from_block, latest, min_value_eth=10.0)
+            from_block = max(0, latest - 20)
+            to_block = latest
+
+            threshold = mantle_scanner.whale_min_value if mantle_scanner.is_sepolia else 10.0
+            transfers = mantle_scanner.scan_large_transfers(from_block, latest, min_value_eth=threshold)
             protocol_events = mantle_scanner.scan_protocol_interactions(from_block, latest)
 
             # Cache prices
@@ -269,7 +272,8 @@ async def signal_scanner() -> None:
         except Exception as e:
             logger.warning(f"Signal scanner error: {e}")
 
-        await asyncio.sleep(180)
+        sleep_secs = 60 if mantle_scanner.is_sepolia else 180
+        await asyncio.sleep(sleep_secs)
 
 
 @asynccontextmanager
