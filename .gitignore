@@ -2,6 +2,9 @@
 node_modules/
 frontend/node_modules/
 frontend/dist/
+contracts/package-lock.json
+contracts/cache/
+contracts/artifacts/
 
 # Python
 __pycache__/

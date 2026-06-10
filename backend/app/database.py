@@ -338,12 +338,12 @@ class Database:
 
     def verify_telegram_pending(self, code: str, chat_id: str, username: str) -> bool:
         conn = self._get_conn()
-        conn.execute(
-            "UPDATE telegram_pending SET verified = 1, chat_id = ?, username = ? WHERE code = ?",
+        cur = conn.execute(
+            "UPDATE telegram_pending SET verified = 1, chat_id = ?, username = ? WHERE code = ? AND verified = 0",
             (chat_id, username, code),
         )
         conn.commit()
-        return conn.total_changes > 0
+        return cur.rowcount > 0
 
     def get_verified_telegram_by_session(self, session_token: str) -> Optional[dict[str, Any]]:
         conn = self._get_conn()
@@ -357,6 +357,13 @@ class Database:
         conn = self._get_conn()
         conn.execute("DELETE FROM telegram_pending WHERE expires_at < ?", (__import__('time').time(),))
         conn.commit()
+
+    def get_all_verified_telegram_users(self) -> list[dict[str, Any]]:
+        conn = self._get_conn()
+        rows = conn.execute(
+            "SELECT chat_id, username FROM telegram_pending WHERE verified = 1 AND chat_id IS NOT NULL"
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     # --- Signals ---
 

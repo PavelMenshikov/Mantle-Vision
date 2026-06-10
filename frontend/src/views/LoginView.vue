@@ -15,6 +15,7 @@ const backendAlive = ref(true)
 
 onMounted(() => {
   if (auth.isAuthenticated) { router.push('/'); return }
+  if (tg.connected) { auth.setTelegramAuth(tg.username); router.push('/'); return }
   fetch('/api/health').then(r => backendAlive.value = r.ok).catch(() => backendAlive.value = false)
 })
 

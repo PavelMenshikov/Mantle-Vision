@@ -23,6 +23,18 @@ async def generate_signal(asset: str = "MNT"):
         raise HTTPException(status_code=503, detail="AI analysis unavailable — no signal generated")
     await db.call(db.save_signal, signal)
     await push_signal(signal)
+    try:
+        from app.blockchain.client import mantle_client
+        if signal.direction.value != "hold":
+            sn = 4  # AI_PREDICTION
+            dr = 0 if signal.direction.value == "buy" else 1 if signal.direction.value == "sell" else 2
+            cf = 0 if signal.confidence >= 0.7 else 1 if signal.confidence >= 0.3 else 2
+            await mantle_client.record_signal_on_chain(
+                signal_type=sn, asset=signal.asset, direction=dr,
+                confidence=cf, reasoning=signal.reasoning,
+            )
+    except Exception:
+        pass
     logger.info(f"Generated signal: {signal.id} {signal.direction.value} {signal.asset} ({signal.confidence:.0%})")
     return signal
 

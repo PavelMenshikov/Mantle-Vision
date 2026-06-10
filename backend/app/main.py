@@ -204,6 +204,20 @@ async def signal_scanner() -> None:
                     from app.api.signals import push_signal
                     await push_signal(arbiter_result)
 
+                    # Record on-chain
+                    from app.blockchain.client import mantle_client
+                    try:
+                        if arbiter_result.direction.value != "hold":
+                            sn = 4  # AI_PREDICTION
+                            dr = 0 if arbiter_result.direction.value == "buy" else 1 if arbiter_result.direction.value == "sell" else 2
+                            cf = 0 if arbiter_result.confidence >= 0.7 else 1 if arbiter_result.confidence >= 0.3 else 2
+                            await mantle_client.record_signal_on_chain(
+                                signal_type=sn, asset=asset, direction=dr,
+                                confidence=cf, reasoning=arbiter_result.reasoning,
+                            )
+                    except Exception as e:
+                        logger.debug(f"On-chain record skipped: {e}")
+
                     # Execute if approved
                     if arbiter_result.direction.value != "hold" and trading_agent.active:
                         await trading_agent.execute_arbiter_decision(
@@ -323,6 +337,7 @@ app.add_middleware(
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
     return {
         "status": "ok",

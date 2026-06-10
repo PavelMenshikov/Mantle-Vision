@@ -1,9 +1,24 @@
 <script setup>
-import { onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTelegramStore } from '@/stores/telegram'
+import { useAuthStore } from '@/stores/auth'
 import NeonButton from '@/components/NeonButton.vue'
 
+const router = useRouter()
 const tg = useTelegramStore()
+const auth = useAuthStore()
+
+onMounted(() => {
+  if (tg.connected) {
+    auth.setTelegramAuth(tg.username)
+    router.push('/')
+  }
+})
+
+watch(() => tg.connected, (val) => {
+  if (val) { auth.setTelegramAuth(tg.username); router.push('/') }
+})
 
 onUnmounted(() => tg.stopPolling())
 </script>

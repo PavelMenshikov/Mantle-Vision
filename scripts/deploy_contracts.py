@@ -74,10 +74,10 @@ def compile_contracts():
 
     print(yellow("⚙  Compiling Solidity contracts..."))
 
-    # Ensure solc 0.8.20
-    if "0.8.20" not in [str(v) for v in get_installed_solc_versions()]:
-        print("  Downloading solc 0.8.20...")
-        install_solc("0.8.20")
+    # Ensure solc 0.8.25
+    if "0.8.25" not in [str(v) for v in get_installed_solc_versions()]:
+        print("  Downloading solc 0.8.25...")
+        install_solc("0.8.25")
 
     oz_path = find_openzeppelin()
     remappings = []
@@ -96,7 +96,7 @@ def compile_contracts():
 
     compiled = compile_files(
         sources,
-        solc_version="0.8.20",
+        solc_version="0.8.25",
         output_values=["abi", "bin"],
         import_remappings=remappings,
         optimize=True,
@@ -108,10 +108,12 @@ def compile_contracts():
 
 # ── Deploy ──────────────────────────────────────────────────────────────
 
+_nonce_lock = [None]  # mutable shared state
+
 def deploy_contract(w3, abi, bytecode, args=None, label=""):
     """Deploy a contract and wait for receipt."""
     account = Account.from_key(MANTLE_PRIVATE_KEY)
-    nonce = w3.eth.get_transaction_count(account.address)
+    nonce = _nonce_lock[0] if _nonce_lock[0] is not None else w3.eth.get_transaction_count(account.address)
     gas_price = w3.eth.gas_price
 
     Contract = w3.eth.contract(abi=abi, bytecode=bytecode)
@@ -133,6 +135,7 @@ def deploy_contract(w3, abi, bytecode, args=None, label=""):
     if receipt.get("status") != 1:
         raise RuntimeError(f"{label} deployment failed: {receipt}")
     print(green(f"  ✅ {label} deployed at: {receipt['contractAddress']}"))
+    _nonce_lock[0] = nonce + 1
     return receipt["contractAddress"]
 
 def update_env(key, value):
@@ -231,7 +234,7 @@ def main():
         address=Web3.to_checksum_address(agent_addr),
         abi=agent_identity_data["abi"],
     )
-    nonce = w3.eth.get_transaction_count(account.address)
+    nonce = _nonce_lock[0] if _nonce_lock[0] is not None else w3.eth.get_transaction_count(account.address)
     tx = agent_contract.functions.setSignalRecorder(
         Web3.to_checksum_address(recorder_addr)
     ).build_transaction({
@@ -246,13 +249,14 @@ def main():
     receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
     if receipt.get("status") == 1:
         print(green("  ✅ SignalRecorder linked to AgentIdentity"))
+        _nonce_lock[0] = nonce + 1
     else:
         print(red("  ❌ Failed to link SignalRecorder"))
 
     # Register Agent
     print(yellow("\n🤖 Step 4/4: Registering AI Agent..."))
     agent_uri = "https://mantle-vision.ai/agent.json"
-    nonce = w3.eth.get_transaction_count(account.address)
+    nonce = _nonce_lock[0] if _nonce_lock[0] is not None else w3.eth.get_transaction_count(account.address)
     tx = agent_contract.functions.register(agent_uri).build_transaction({
         "from": account.address,
         "nonce": nonce,
@@ -269,6 +273,7 @@ def main():
         logs = agent_contract.events.Registered().process_receipt(receipt)
         agent_id = logs[0]["args"]["agentId"] if logs else "?"
         print(green(f"  ✅ Agent registered — ID: {agent_id}"))
+        _nonce_lock[0] = nonce + 1
     else:
         print(red("  ❌ Agent registration failed"))
 

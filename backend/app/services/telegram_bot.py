@@ -169,7 +169,7 @@ class TelegramNotifier:
             await self.bot.session.close()
             logger.info("Telegram bot stopped")
 
-    async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
+    async def send_message(self, text: str, parse_mode: str = "HTML", chat_id: Optional[str] = None) -> bool:
         if not self.token:
             logger.debug("send_message skipped: TELEGRAM_BOT_TOKEN not set")
             return False
@@ -178,24 +178,44 @@ class TelegramNotifier:
             logger.warning("send_message skipped: bot not initialized")
             return False
 
-        chat_id = self.chat_id
-        if not chat_id:
-            logger.debug("send_message skipped: TELEGRAM_CHAT_ID not set")
+        target = chat_id or self.chat_id
+        if not target:
+            logger.debug("send_message skipped: no chat_id")
             return False
 
         try:
             await asyncio.wait_for(
-                self.bot.send_message(chat_id, text, parse_mode=parse_mode),
+                self.bot.send_message(target, text, parse_mode=parse_mode),
                 timeout=5,
             )
-            logger.debug(f"Message sent to chat_id={chat_id} ({len(text)} chars)")
+            logger.debug(f"Message sent to chat_id={target} ({len(text)} chars)")
             return True
         except asyncio.TimeoutError:
-            logger.warning(f"Telegram send_message timed out (chat_id={chat_id})")
+            logger.warning(f"Telegram send_message timed out (chat_id={target})")
             return False
         except Exception as e:
-            logger.error(f"Failed to send Telegram message: {e}")
+            logger.error(f"Failed to send Telegram message to {target}: {e}")
             return False
+
+    async def broadcast(self, text: str, parse_mode: str = "HTML") -> int:
+        from app.database import db
+        sent = 0
+        targets: set[str] = set()
+        if self.chat_id:
+            targets.add(self.chat_id)
+        for user in db.get_all_verified_telegram_users():
+            cid = user.get("chat_id")
+            if cid:
+                targets.add(cid)
+        if not targets:
+            logger.debug("broadcast skipped: no targets")
+            return 0
+        for cid in targets:
+            ok = await self.send_message(text, parse_mode=parse_mode, chat_id=cid)
+            if ok:
+                sent += 1
+        logger.info(f"broadcast: sent to {sent}/{len(targets)} targets")
+        return sent
 
     async def notify_signal(self, signal: dict[str, Any]) -> None:
         direction_emoji = "\U0001f7e2" if signal["direction"] == "buy" else "\U0001f534" if signal["direction"] == "sell" else "\U0001f7e1"
@@ -206,8 +226,8 @@ class TelegramNotifier:
             f"{signal.get('reasoning', '')}\n"
             f"#{signal['asset']} #{signal['direction']}"
         )
-        logger.info(f"Notifying signal: {signal['direction']} {signal['asset']} confidence={signal['confidence']:.2f}")
-        await self.send_message(text)
+        logger.info(f"Broadcasting signal: {signal['direction']} {signal['asset']} confidence={signal['confidence']:.2f}")
+        await self.broadcast(text)
 
     async def notify_whale_alert(self, data: dict[str, Any]) -> None:
         addr = data.get("address", "unknown")[:10]
@@ -224,8 +244,8 @@ class TelegramNotifier:
             f"Volume: {vol:.2f} ETH\n"
             f"{tag_str}"
         )
-        logger.info(f"Notifying whale alert: {addr} type={wtype} score={score:.2f}")
-        await self.send_message(text)
+        logger.info(f"Broadcasting whale alert: {addr} type={wtype} score={score:.2f}")
+        await self.broadcast(text)
 
     async def notify_anomaly(self, anomaly: dict[str, Any]) -> None:
         addr = anomaly.get("address", "unknown")[:10]
@@ -241,8 +261,8 @@ class TelegramNotifier:
             f"Volume: ${value:,.0f}\n"
             f"{details}"
         )
-        logger.info(f"Notifying anomaly: {addr} score={score:.2f}")
-        await self.send_message(text)
+        logger.info(f"Broadcasting anomaly: {addr} score={score:.2f}")
+        await self.broadcast(text)
 
 
 telegram = TelegramNotifier()

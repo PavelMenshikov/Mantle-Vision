@@ -10,6 +10,42 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+SIGNAL_RECORDER_ABI = [
+    {
+        "inputs": [
+            {"name": "agentId", "type": "uint256"},
+            {"name": "signalType", "type": "uint8"},
+            {"name": "asset", "type": "string"},
+            {"name": "direction", "type": "uint8"},
+            {"name": "confidence", "type": "uint8"},
+            {"name": "reasoning", "type": "string"},
+            {"name": "txHash", "type": "bytes32"},
+        ],
+        "name": "recordSignal",
+        "outputs": [{"name": "id", "type": "uint256"}],
+        "stateMutability": "nonpayable",
+        "type": "function",
+    },
+    {
+        "inputs": [{"name": "id", "type": "uint256"}],
+        "name": "getSignal",
+        "outputs": [
+            {"name": "id", "type": "uint256"},
+            {"name": "agentId", "type": "uint256"},
+            {"name": "signalType", "type": "uint8"},
+            {"name": "asset", "type": "string"},
+            {"name": "direction", "type": "uint8"},
+            {"name": "confidence", "type": "uint8"},
+            {"name": "reasoning", "type": "string"},
+            {"name": "txHash", "type": "bytes32"},
+            {"name": "timestamp", "type": "uint256"},
+            {"name": "recorder", "type": "address"},
+        ],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
+
 AGENT_CONTRACT_ABI = [
     {
         "inputs": [{"name": "agentURI", "type": "string"}],
@@ -55,6 +91,7 @@ class MantleClient:
 
         self.w3: Optional[Web3] = None
         self._connected = False
+        self._signal_recorder_addr: Optional[str] = None
 
         self._connect()
 
@@ -189,6 +226,82 @@ class MantleClient:
         except Exception as e:
             logger.error(f"Failed to get agent {agent_id}: {e}")
             return None
+
+
+    async def get_signal_recorder_address(self) -> Optional[str]:
+        if self._signal_recorder_addr:
+            return self._signal_recorder_addr
+        if not self.agent_contract_addr:
+            return None
+        if not self.is_connected or not self.w3:
+            self._connect()
+            if not self.w3:
+                return None
+        try:
+            contract = self.w3.eth.contract(
+                address=self.w3.to_checksum_address(self.agent_contract_addr),
+                abi=AGENT_CONTRACT_ABI,
+            )
+            addr = contract.functions.getSignalRecorder().call()
+            if addr and int(addr, 16) != 0:
+                self._signal_recorder_addr = addr
+                logger.info(f"SignalRecorder address resolved: {addr}")
+                return addr
+        except Exception as e:
+            logger.warning(f"Failed to resolve SignalRecorder address: {e}")
+        return None
+
+    async def record_signal_on_chain(
+        self,
+        signal_type: int,
+        asset: str,
+        direction: int,
+        confidence: int,
+        reasoning: str,
+        tx_hash: bytes = b"\x00" * 32,
+        agent_id: int = 0,
+    ) -> Optional[int]:
+        if not self.private_key or not self.agent_contract_addr:
+            return None
+        if not self.is_connected or not self.w3:
+            self._connect()
+            if not self.w3:
+                return None
+
+        recorder_addr = await self.get_signal_recorder_address()
+        if not recorder_addr:
+            logger.warning("SignalRecorder address not available")
+            return None
+
+        try:
+            account = Account.from_key(self.private_key)
+            contract = self.w3.eth.contract(
+                address=self.w3.to_checksum_address(recorder_addr),
+                abi=SIGNAL_RECORDER_ABI,
+            )
+
+            tx = contract.functions.recordSignal(
+                agent_id, signal_type, asset, direction, confidence, reasoning, tx_hash
+            ).build_transaction({
+                "from": account.address,
+                "nonce": self.w3.eth.get_transaction_count(account.address),
+                "gas": 300_000,
+                "gasPrice": self.w3.eth.gas_price,
+                "chainId": self.chain_id,
+            })
+
+            signed = account.sign_transaction(tx)
+            tx_hash_res = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash_res, timeout=120)
+
+            if receipt.get("status") == 1:
+                logger.info(f"Signal recorded on-chain: tx={tx_hash_res.hex()}")
+                return 1
+
+            logger.warning(f"On-chain record failed: {receipt}")
+        except Exception as e:
+            logger.warning(f"Failed to record signal on-chain: {e}")
+        return None
 
 
 mantle_client = MantleClient()

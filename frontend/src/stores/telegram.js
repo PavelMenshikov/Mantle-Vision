@@ -23,7 +23,10 @@ export const useTelegramStore = defineStore('telegram', () => {
     error.value = ''
     console.log('[Telegram] Init connection...')
     try {
-      const res = await fetch('/api/auth/telegram/init')
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      const res = await fetch('/api/auth/telegram/init', { signal: controller.signal })
+      clearTimeout(timeoutId)
       if (!res.ok) {
         console.warn('[Telegram] Init API returned', res.status, '- using offline fallback')
         code.value = 'OFFLINE'
@@ -40,6 +43,7 @@ export const useTelegramStore = defineStore('telegram', () => {
       console.error('[Telegram] Init failed (backend offline?):', e)
       code.value = 'OFFLINE'
       sessionToken.value = 'offline'
+      error.value = 'Backend недоступен. Попробуй Demo.'
     } finally {
       loading.value = false
     }
@@ -91,6 +95,6 @@ export const useTelegramStore = defineStore('telegram', () => {
 
   return {
     connected, username, code, loading, error, botUsername, instructions,
-    initConnection, disconnect
+    initConnection, startPolling, stopPolling, disconnect
   }
 })
