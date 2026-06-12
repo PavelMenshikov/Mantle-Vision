@@ -40,3 +40,6 @@ Thumbs.db
 # Runtime
 stderr.txt
 stdout.txt
+
+# Session
+SESSION_SUMMARY.md
