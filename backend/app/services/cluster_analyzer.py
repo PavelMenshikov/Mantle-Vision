@@ -92,16 +92,24 @@ class ClusterAnalyzer:
         if not latest:
             return sources
 
-        from_block = max(0, latest - 500)
+        # Сканируем последние 100 блоков вместо 500.
+        # Компромисс: меньше покрытие, но результат за секунды, не минуты.
+        SCAN_WINDOW = 100
+        from_block = max(0, latest - SCAN_WINDOW)
+
         for block_num in range(from_block, latest + 1):
             try:
-                block = mantle_scanner.w3.eth.get_block(block_num, full_transactions=True) if mantle_scanner.w3 else None
+                if not mantle_scanner.w3:
+                    break
+                block = mantle_scanner.w3.eth.get_block(block_num, full_transactions=True)
                 if not block:
                     continue
                 for tx in block.get("transactions", []):
                     to_addr = (tx.get("to") or "").lower()
                     if to_addr == addr_key:
-                        value_eth = float(mantle_scanner.w3.from_wei(tx.get("value", 0) or 0, "ether"))
+                        value_eth = float(mantle_scanner.w3.from_wei(
+                            tx.get("value", 0) or 0, "ether"
+                        ))
                         if value_eth > 0.1:
                             sources.append({
                                 "from": tx["from"].lower(),
@@ -111,6 +119,10 @@ class ClusterAnalyzer:
                                 "block_number": block_num,
                                 "timestamp": str(block.get("timestamp", 0)),
                             })
+                            if len(sources) >= 5:
+                                break
+                if len(sources) >= 5:
+                    break
             except Exception:
                 continue
 

@@ -1,12 +1,12 @@
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
 export function useWebSocket(url, { onMessage, onOpen, onClose, onError } = {}) {
   const ws = ref(null)
   const connected = ref(false)
   const reconnectAttempts = ref(0)
-  const maxReconnectAttempts = 10
-  const reconnectDelay = ref(2000)
+  const maxReconnectAttempts = 50
   let reconnectTimer = null
+  let visibilityHandler = null
 
   function connect() {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) return
@@ -47,6 +47,20 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, onError } = {}) 
     }, delay)
   }
 
+  function reconnectNow() {
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    if (ws.value) {
+      try { ws.value.close() } catch {}
+      ws.value = null
+    }
+    connected.value = false
+    reconnectAttempts.value = 0
+    connect()
+  }
+
   function send(data) {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(typeof data === 'string' ? data : JSON.stringify(data))
@@ -59,6 +73,10 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, onError } = {}) 
       reconnectTimer = null
     }
     reconnectAttempts.value = maxReconnectAttempts
+    if (visibilityHandler) {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+      visibilityHandler = null
+    }
     if (ws.value) {
       ws.value.close()
       ws.value = null
@@ -66,9 +84,15 @@ export function useWebSocket(url, { onMessage, onOpen, onClose, onError } = {}) 
     connected.value = false
   }
 
-  onUnmounted(() => {
-    close()
-  })
+  function listenVisibility() {
+    if (visibilityHandler) return
+    visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && !connected.value) {
+        reconnectNow()
+      }
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
 
-  return { ws, connected, connect, send, close }
+  return { ws, connected, connect, send, close, reconnectNow, listenVisibility }
 }

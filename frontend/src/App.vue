@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import NavSidebar from '@/components/NavSidebar.vue'
 import WalletConnect from '@/components/WalletConnect.vue'
 import DemoWatermark from '@/components/DemoWatermark.vue'
@@ -28,6 +28,13 @@ function searchWallet() {
 
 onMounted(() => {
   if (auth.isAuthenticated) {
+    signals.fetchSignals()
+    signals.connectWebSocket()
+  }
+})
+
+watch(() => auth.isAuthenticated, (val) => {
+  if (val) {
     signals.fetchSignals()
     signals.connectWebSocket()
   }

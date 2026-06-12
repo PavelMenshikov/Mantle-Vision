@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import random
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
@@ -36,87 +35,48 @@ Cleopatra DEX, Methamorphosis LRT, Lendle lending, Merchant Moe, Agni Finance, F
 
 
 def _fallback_whale_analysis(data: dict[str, Any]) -> dict[str, Any]:
-    total_value = data.get("total_value", 0)
-    if total_value > 100_000_000:
-        direction = "sell"
-        confidence = 0.55 + random.random() * 0.2
-        reasoning = "Large whale wallet detected. Historical patterns suggest distribution phase."
-    elif total_value > 10_000_000:
-        direction = "hold"
-        confidence = 0.5 + random.random() * 0.15
-        reasoning = "Medium whale accumulation detected. Monitoring for breakout confirmation."
-    else:
-        direction = "buy"
-        confidence = 0.5 + random.random() * 0.25
-        reasoning = "Small wallet showing accumulation pattern. Potential early entry signal."
-
+    total_value = data.get("totalValue") or data.get("total_value", 0)
+    wallet_type = data.get("wallet_type", "unknown")
+    tags = data.get("tags", [])
+    score = data.get("sentinel_score", data.get("anomaly_score", 0))
+    tag_str = ", ".join(tags[:5]) if tags else "no tags"
+    reasoning_parts = [f"Address moved {total_value:.1f} MNT"]
+    if wallet_type and wallet_type != "unknown":
+        reasoning_parts.append(f"classified as {wallet_type}")
+    if score:
+        reasoning_parts.append(f"risk score {score:.0%}")
+    reasoning_parts.append(f"tags: {tag_str}")
+    reasoning_parts.append("Deep investigation: check funding sources and tx history on mantlescan.xyz")
     return {
         "type": "whale_movement",
         "asset": "MNT",
-        "direction": direction,
-        "confidence": round(min(confidence, 0.95), 2),
-        "reasoning": reasoning,
-        "source": "ai_analyzer",
+        "direction": "hold",
+        "confidence": 0.0,
+        "reasoning": ". ".join(reasoning_parts) + ".",
+        "source": "on_chain_facts",
     }
 
 
 def _fallback_market_trend(data: dict[str, Any]) -> dict[str, Any]:
-    sentiment = data.get("overall", 0.5)
-    if sentiment > 0.7:
-        direction = "buy"
-        confidence = 0.6 + random.random() * 0.15
-        reasoning = "Strong positive market sentiment detected. Bullish momentum likely."
-    elif sentiment < 0.4:
-        direction = "sell"
-        confidence = 0.55 + random.random() * 0.15
-        reasoning = "Bearish sentiment prevailing. Risk-off positioning recommended."
-    else:
-        direction = "hold"
-        confidence = 0.5 + random.random() * 0.1
-        reasoning = "Neutral market conditions. Await clearer directional signal."
-
+    """Детерминированный fallback без random."""
     return {
         "type": "market_trend",
         "asset": "MNT",
-        "direction": direction,
-        "confidence": round(min(confidence, 0.9), 2),
-        "reasoning": reasoning,
-        "source": "ai_analyzer",
+        "direction": "hold",
+        "confidence": 0.0,
+        "reasoning": "Market trend analysis unavailable — AI providers offline.",
+        "source": "no_data",
     }
 
 
-def _fallback_signal(asset: str = "MNT") -> dict[str, Any]:
-    direction = random.choice(["buy", "sell", "hold"])
-    conf_map = {"buy": (0.6, 0.85), "sell": (0.55, 0.8), "hold": (0.5, 0.7)}
-    lo, hi = conf_map[direction]
-    confidence = lo + random.random() * (hi - lo)
-
-    reasons = {
-        "buy": [
-            "Accumulation detected across multiple whale wallets",
-            "Positive net flow to exchanges, suggesting buying pressure",
-            "Social sentiment strongly bullish with increasing volume",
-        ],
-        "sell": [
-            "Whale distribution pattern detected on chain",
-            "Exchange inflows increasing, potential sell pressure",
-            "Declining social volume with negative sentiment shift",
-        ],
-        "hold": [
-            "Mixed signals across on-chain metrics",
-            "Awaiting confirmation of trend direction",
-            "Low volatility expected in near term",
-        ],
-    }
-
-    return {
-        "type": "combined_signal",
-        "asset": asset,
-        "direction": direction,
-        "confidence": round(confidence, 2),
-        "reasoning": random.choice(reasons[direction]),
-        "source": "ai_analyzer",
-    }
+def _fallback_signal(asset: str = "MNT") -> Optional[dict[str, Any]]:
+    """
+    Возвращает None когда AI недоступен.
+    Никогда не генерирует случайные направления — это вводит пользователя в заблуждение.
+    Вызывающий код должен обработать None и показать 'Insufficient data'.
+    """
+    logger.warning(f"All AI providers unavailable for {asset} — returning no signal")
+    return None
 
 
 class AIAnalyzer:

@@ -21,7 +21,7 @@ async def analyze_wallet(address: str):
 
     addr = address.lower()
 
-    score = whale_scorer.score_single_wallet(addr)
+    score = await whale_scorer.score_single_wallet(addr)
     cluster = db.find_cluster_by_address(addr)
     profile = db.get_whale_by_address(addr)
 
@@ -151,7 +151,7 @@ async def wallet_summary(address: str):
     from app.services.whale_score import whale_scorer
 
     addr = address.lower()
-    score = whale_scorer.score_single_wallet(addr)
+    score = await whale_scorer.score_single_wallet(addr)
     cluster = db.find_cluster_by_address(addr)
     profile = db.get_whale_by_address(addr)
 

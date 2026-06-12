@@ -57,7 +57,7 @@ async def list_whales(user_id: str = "", refresh: bool = False):
 @router.post("", response_model=WhaleProfile)
 async def add_whale(address: str, label: str = "", user_id: str = ""):
     from app.services.whale_score import whale_scorer
-    score = whale_scorer.score_single_wallet(address)
+    score = await whale_scorer.score_single_wallet(address)
 
     if user_id:
         added = await db.call(db.add_user_whale, user_id, address, label)
@@ -110,7 +110,7 @@ async def remove_whale(address: str, user_id: str = ""):
 @router.get("/score/{address}", response_model=dict)
 async def get_whale_score(address: str):
     from app.services.whale_score import whale_scorer
-    score = whale_scorer.score_single_wallet(address)
+    score = await whale_scorer.score_single_wallet(address)
     return score
 
 

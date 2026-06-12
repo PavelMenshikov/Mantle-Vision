@@ -3,18 +3,19 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import WhaleCard from '@/components/WhaleCard.vue'
 import GlassCard from '@/components/GlassCard.vue'
 import NeonButton from '@/components/NeonButton.vue'
-import { RefreshCw, X, Users, Plus, Search } from 'lucide-vue-next'
+import { RefreshCw, X, Users, Plus, Search, Bell, BellOff } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
 const whales = ref([])
+const watchedSet = ref(new Set())
 const loading = ref(false)
 const showAddForm = ref(false)
 const newAddress = ref('')
 const newLabel = ref('')
 let abortCtrl = null
 
-const totalTracked = computed(() => whales.value.length)
+const totalTracked = computed(() => watchedSet.value.size)
 const totalVolume = computed(() => {
   if (!whales.value.length) return '$0'
   const sum = whales.value.reduce((acc, w) => acc + (w.totalValue || 0), 0)
@@ -34,14 +35,32 @@ async function fetchWhales() {
   abortCtrl = new AbortController()
   loading.value = true
   try {
-    const uid = getUserParam()
-    const res = await fetch(`/api/whales?user_id=${encodeURIComponent(uid)}`, { signal: abortCtrl.signal })
-    whales.value = await res.json()
+    const [allRes, watchedRes] = await Promise.all([
+      fetch('/api/whales', { signal: abortCtrl.signal }),
+      fetch(`/api/whales?user_id=${encodeURIComponent(getUserParam())}`, { signal: abortCtrl.signal }),
+    ])
+    whales.value = await allRes.json()
+    const watched = await watchedRes.json()
+    watchedSet.value = new Set(watched.map(w => w.address.toLowerCase()))
   } catch {
     whales.value = []
   } finally {
     loading.value = false
   }
+}
+
+async function toggleWatch(whale) {
+  const addr = whale.address
+  try {
+    const uid = getUserParam()
+    if (watchedSet.value.has(addr.toLowerCase())) {
+      await fetch(`/api/whales/${addr}?user_id=${encodeURIComponent(uid)}`, { method: 'DELETE' })
+      watchedSet.value.delete(addr.toLowerCase())
+    } else {
+      const res = await fetch(`/api/whales?address=${encodeURIComponent(addr)}&label=${encodeURIComponent(whale.label || '')}&user_id=${encodeURIComponent(uid)}`, { method: 'POST' })
+      if (res.ok) watchedSet.value.add(addr.toLowerCase())
+    }
+  } catch {}
 }
 
 async function addWhale() {
@@ -50,21 +69,13 @@ async function addWhale() {
     const uid = getUserParam()
     const res = await fetch(`/api/whales?address=${encodeURIComponent(newAddress.value)}&label=${encodeURIComponent(newLabel.value)}&user_id=${encodeURIComponent(uid)}`, { method: 'POST' })
     if (res.ok) {
-      const w = await res.json()
-      whales.value.push(w)
+      watchedSet.value.add(newAddress.value.toLowerCase())
+      await fetchWhales()
     }
   } catch {}
   newAddress.value = ''
   newLabel.value = ''
   showAddForm.value = false
-}
-
-async function removeWhale(address) {
-  try {
-    const uid = getUserParam()
-    await fetch(`/api/whales/${address}?user_id=${encodeURIComponent(uid)}`, { method: 'DELETE' })
-    whales.value = whales.value.filter(w => w.address !== address)
-  } catch {}
 }
 
 onMounted(fetchWhales)
@@ -76,7 +87,7 @@ onUnmounted(() => { if (abortCtrl) abortCtrl.abort() })
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
         <h2 class="text-2xl font-display font-bold text-gradient">Whale Tracker</h2>
-        <p class="text-sm text-cyber-muted font-mono mt-1">Monitor large wallet activity on Mantle</p>
+        <p class="text-sm text-cyber-muted font-mono mt-1">All detected whales on Mantle</p>
       </div>
       <div class="flex gap-2">
         <NeonButton variant="ghost" size="sm" @click="fetchWhales">
@@ -91,16 +102,16 @@ onUnmounted(() => { if (abortCtrl) abortCtrl.abort() })
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <GlassCard accent="green">
-        <div class="text-xs text-cyber-muted font-mono mb-1">Tracked Whales</div>
-        <div class="text-2xl font-display font-bold text-cyber-text">{{ totalTracked }}</div>
+        <div class="text-xs text-cyber-muted font-mono mb-1">Whales Detected</div>
+        <div class="text-2xl font-display font-bold text-cyber-text">{{ whales.length }}</div>
       </GlassCard>
       <GlassCard accent="blue">
         <div class="text-xs text-cyber-muted font-mono mb-1">Total Volume</div>
         <div class="text-2xl font-display font-bold text-cyber-text">{{ totalVolume }}</div>
       </GlassCard>
       <GlassCard accent="red">
-        <div class="text-xs text-cyber-muted font-mono mb-1">High Risk</div>
-        <div class="text-2xl font-display font-bold text-cyber-text">{{ highRiskCount }}</div>
+        <div class="text-xs text-cyber-muted font-mono mb-1">High Risk / Watching</div>
+        <div class="text-2xl font-display font-bold text-cyber-text">{{ highRiskCount }} / {{ totalTracked }}</div>
       </GlassCard>
     </div>
 
@@ -127,18 +138,26 @@ onUnmounted(() => { if (abortCtrl) abortCtrl.abort() })
 
     <div v-else-if="!whales.length" class="text-center py-12">
       <Search class="w-12 h-12 mx-auto mb-3 text-cyber-muted/20" />
-      <p class="text-cyber-muted text-sm font-mono mb-4">No whales tracked yet. Add an address to start monitoring.</p>
-      <NeonButton variant="primary" size="sm" @click="showAddForm = true"><Plus class="w-4 h-4" /> Add First Whale</NeonButton>
+      <p class="text-cyber-muted text-sm font-mono mb-4">No whales detected yet. The scanner will populate this list.</p>
+      <NeonButton variant="primary" size="sm" @click="showAddForm = true"><Plus class="w-4 h-4" /> Add Manually</NeonButton>
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div v-for="whale in whales" :key="whale.address" class="relative">
         <WhaleCard :whale="whale" />
         <button
-          @click="removeWhale(whale.address)"
-          class="absolute top-2 right-2 text-[10px] text-cyber-danger/50 hover:text-cyber-danger font-mono transition-colors"
-          title="Remove"
-        ><X class="w-3 h-3" /></button>
+          @click="toggleWatch(whale)"
+          :class="[
+            'absolute top-2 right-2 text-[10px] font-mono transition-colors px-2 py-1 rounded-lg',
+            watchedSet.has(whale.address.toLowerCase())
+              ? 'text-cyber-accent bg-cyber-accent/10 hover:text-cyber-danger hover:bg-cyber-danger/10'
+              : 'text-cyber-muted/50 hover:text-cyber-accent hover:bg-cyber-accent/10'
+          ]"
+          :title="watchedSet.has(whale.address.toLowerCase()) ? 'Unwatch' : 'Watch'"
+        >
+          <Bell v-if="watchedSet.has(whale.address.toLowerCase())" class="w-3 h-3" />
+          <BellOff v-else class="w-3 h-3" />
+        </button>
       </div>
     </div>
   </div>

@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ALTLLM_API_KEY: str = ""
 
     TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_BOT_USERNAME: str = ""
     TELEGRAM_CHAT_ID: str = ""
 
     AGENT_CONTRACT_ADDRESS: str = ""

@@ -28,9 +28,10 @@ export const useTelegramStore = defineStore('telegram', () => {
       const res = await fetch('/api/auth/telegram/init', { signal: controller.signal })
       clearTimeout(timeoutId)
       if (!res.ok) {
-        console.warn('[Telegram] Init API returned', res.status, '- using offline fallback')
-        code.value = 'OFFLINE'
-        sessionToken.value = 'offline'
+        console.warn('[Telegram] Init API returned', res.status, '- backend offline')
+        error.value = 'Бэкенд не запущен. Запусти `uvicorn` или нажми "Continue as Demo".'
+        code.value = ''
+        sessionToken.value = ''
         return
       }
       const data = await res.json()
@@ -41,9 +42,9 @@ export const useTelegramStore = defineStore('telegram', () => {
       startPolling()
     } catch (e) {
       console.error('[Telegram] Init failed (backend offline?):', e)
-      code.value = 'OFFLINE'
-      sessionToken.value = 'offline'
-      error.value = 'Backend недоступен. Попробуй Demo.'
+      code.value = ''
+      sessionToken.value = ''
+      error.value = 'Бэкенд не запущен. Запусти `uvicorn` или нажми "Continue as Demo".'
     } finally {
       loading.value = false
     }

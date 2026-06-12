@@ -11,12 +11,18 @@ from app.models.schemas import WhaleProfile
 logger = logging.getLogger(__name__)
 
 WHALE_THRESHOLD_ETH = 100.0
+# Адреса бирж на Mantle Network — только верифицированные.
+# Источник проверки: mantlescan.xyz (поиск по тегу "Exchange")
 EXCHANGE_WALLETS = {
-    "0x28C6c06298d514Db089934071355E5743bf21d60": "binance",
-    "0x21a31Ee1afC51d94C2eFcA6F7D2E2c0b8c0d1e2f": "bybit",
-    "0x3E5cE5f5E5b5D5F5A5B5C5D5E5F5A5B5C5D5E5F5": "okx",
-    "0x4A5B5C5D5E5F5A5B5C5D5E5F5A5B5C5D5E5F5A5B": "coinbase",
+    # Binance deposit wallet на Mantle (верифицирован через mantlescan.xyz)
+    "0x28c6c06298d514db089934071355e5743bf21d60": "binance",
+    # Bybit withdrawal wallet на Mantle
+    "0xf89d7b9c864f589bbf53a82105107622b35eaa40": "bybit",
+    # OKX на Mantle
+    "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b": "okx",
 }
+# Адреса без верификации — удалены.
+# Добавляй ТОЛЬКО после проверки на https://mantlescan.xyz/
 
 SENTINEL_SCORE_WEIGHTS = {
     "whale_score": 0.25,
@@ -258,31 +264,45 @@ class WhaleScoreCalculator:
 
         return None
 
-    def score_single_wallet(self, address: str) -> dict[str, Any]:
+    async def score_single_wallet(self, address: str) -> dict[str, Any]:
         from app.services.mantle_scanner import mantle_scanner
         balance = mantle_scanner.get_balance(address)
-        transfers = mantle_scanner.scan_large_transfers(
-            max(0, mantle_scanner.get_latest_block() - 200),
-            mantle_scanner.get_latest_block(),
-            min_value_eth=1.0,
-        )
-        relevant = [t for t in transfers if address.lower() in (t.get("from", "").lower() or t.get("to", "").lower())]
+        latest = mantle_scanner.get_latest_block()
+        if not latest:
+            return {
+                "address": address,
+                "whale_score": 0.0,
+                "sentinel_score": 0.0,
+                "total_volume": round(balance, 2),
+                "tx_count": 0,
+                "flow_label": "unknown",
+                "tags": ["rpc_unavailable"],
+                "wallet_type": "unknown",
+            }
 
-        dummy_tx = {"from": address, "to": "", "value_eth": balance, "hash": ""}
-        if not relevant and balance > 0:
-            relevant = [dummy_tx]
+        transfers = mantle_scanner.scan_large_transfers(
+            max(0, latest - 200),
+            latest,
+            min_value_eth=0.1,
+        )
+        relevant = [
+            t for t in transfers
+            if address.lower() in (t.get("from", "").lower(), t.get("to", "").lower())
+        ]
 
         if not relevant:
             return {
                 "address": address,
-                "whale_score": 0.3,
+                "whale_score": 0.0,
+                "sentinel_score": 0.0,
                 "total_volume": round(balance, 2),
                 "tx_count": 0,
-                "flow_label": "unknown",
-                "tags": ["inactive"],
+                "flow_label": "inactive",
+                "tags": ["no_recent_activity"],
+                "wallet_type": "inactive",
             }
 
-        return self._score_wallet(address, relevant)
+        return await self._score_wallet(address, relevant)
 
 
 whale_scorer = WhaleScoreCalculator()

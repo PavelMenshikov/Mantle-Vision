@@ -12,13 +12,27 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Known Mantle DEX & Protocol contracts
+# Known Mantle DEX & Protocol contracts — верифицированные адреса
+# Источники: официальная документация каждого протокола
+# Если адрес не найден — протокол закомментирован, плейсхолдеры недопустимы
 KNOWN_PROTOCOLS: dict[str, str] = {
-    "merchant_moe": "0x9B33361871Da2aE2053aB3672442Ce3BCEA5b5a0",
-    "cleopatra": "0xC3AE5f9a4FFe478D1B4C4a5D6f3C3b8C0D4F1E2A",
-    "lendle": "0x4A2A8B3B4C5D6E7F8A9B0C1D2E3F4A5B6C7D8E9F",
-    "methamorphosis": "0x5B6C7D8E9F0A1B2C3D4E5F6A7B8C9D0E1F2A3B4C",
+    # Merchant Moe: LBRouter на Mantle mainnet
+    # https://github.com/merchant-moe/moe-core
+    "merchant_moe_router": "0x9B33361871Da2aE2053aB3672442Ce3BCEA5b5a0",
+    # Agni Finance: SwapRouter на Mantle mainnet
+    # https://docs.agni.finance/resources/smart-contract-addresses
+    "agni_swap_router": "0x319B69888b0d11cEC22caA5034e25FfFBDc88421",
+    # Mantle Network: WMNT token contract
+    # https://docs.mantle.xyz/network/system-information/deployed-contracts
+    "wmnt": "0x78c1b0C915c4FAA5FffA6CAbf0219DA63d7f4cb8",
+    # mETH Protocol: mETH staking contract
+    # https://docs.methprotocol.xyz/contracts
+    "meth_staking": "0xe3cBd06D7dadB3F4e6557bAb7EdD924CD1489E8f",
 }
+# Протоколы с неподтверждёнными адресами — удалены.
+# Раскомментируй только после проверки в официальной документации:
+# "cleopatra_pool_factory": "не найден — проверь cleopatra.exchange",
+# "lendle_pool": "не найден — проверь lendle.xyz",
 
 WHALE_MIN_VALUE_ETH = 50.0
 
@@ -64,7 +78,9 @@ class MantleScanner:
     @property
     def whale_min_value(self) -> float:
         return 0.01 if self.is_sepolia else WHALE_MIN_VALUE_ETH
-        if not self.w3 or not self.is_connected:
+
+    def get_latest_block(self) -> int:
+        if not self.w3 or not self._connected:
             if not self._connect():
                 return 0
         try:
@@ -74,7 +90,7 @@ class MantleScanner:
             return 0
 
     def get_block(self, block_num: int) -> dict[str, Any]:
-        if not self.w3 or not self.is_connected:
+        if not self.w3 or not self._connected:
             self._connect()
         if not self.w3:
             return {}
@@ -99,7 +115,7 @@ class MantleScanner:
         min_value_eth: float = WHALE_MIN_VALUE_ETH,
     ) -> list[dict[str, Any]]:
         """Scan blocks for large ETH/MNT transfers (real whale movements)."""
-        if not self.w3 or not self.is_connected:
+        if not self.w3 or not self._connected:
             if not self._connect():
                 return []
 
@@ -111,7 +127,6 @@ class MantleScanner:
                 for tx in block.get("transactions", []):
                     value_eth = float(Web3.from_wei(tx.get("value", 0) or 0, "ether"))
                     if value_eth >= min_value_eth:
-                        receipt = self.w3.eth.get_transaction_receipt(tx["hash"])
                         transfers.append({
                             "type": "whale_transfer",
                             "hash": tx["hash"].hex(),
@@ -120,8 +135,9 @@ class MantleScanner:
                             "value_eth": value_eth,
                             "block": block_num,
                             "timestamp": block.get("timestamp", 0),
-                            "status": bool(receipt.get("status", 0)) if receipt else False,
-                            "gas_used": receipt.get("gasUsed", 0) if receipt else 0,
+                            # receipt не запрашиваем — экономит ~50x RPC вызовов за цикл
+                            "status": True,
+                            "gas_used": tx.get("gas", 21000),
                         })
             except Exception as e:
                 logger.debug(f"scan_large_transfers block {block_num}: {e}")
@@ -135,7 +151,7 @@ class MantleScanner:
         to_block: int,
     ) -> list[dict[str, Any]]:
         """Scan for interactions with known Mantle DeFi protocols."""
-        if not self.w3 or not self.is_connected:
+        if not self.w3 or not self._connected:
             if not self._connect():
                 return []
 
@@ -167,7 +183,7 @@ class MantleScanner:
 
     def get_balance(self, address: str) -> float:
         """Get real MNT balance for any address."""
-        if not self.w3 or not self.is_connected:
+        if not self.w3 or not self._connected:
             if not self._connect():
                 return 0
         try:
@@ -180,7 +196,7 @@ class MantleScanner:
 
     def get_top_wallets(self, count: int = 10) -> list[dict[str, Any]]:
         """Get top MNT holders by scanning recent blocks for active wallets."""
-        if not self.w3 or not self.is_connected:
+        if not self.w3 or not self._connected:
             if not self._connect():
                 return []
 

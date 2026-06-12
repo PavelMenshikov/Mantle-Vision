@@ -11,6 +11,9 @@ from app.api.telegram_auth import verify_connection_code
 logger = logging.getLogger(__name__)
 
 
+EXPLORER_URL = "https://mantlescan.xyz"
+
+
 class TelegramNotifier:
     def __init__(self, token: str = "") -> None:
         self.token = token or settings.TELEGRAM_BOT_TOKEN
@@ -19,7 +22,7 @@ class TelegramNotifier:
         self.dp: Any = None
         self._initialized = False
         self.auto_trade = False
-        self.bot_username: str = ""
+        self.bot_username: str = settings.TELEGRAM_BOT_USERNAME or ""
 
         if not self.token:
             logger.warning("TELEGRAM_BOT_TOKEN not set — telegram notifier disabled")
@@ -109,6 +112,21 @@ class TelegramNotifier:
                 logger.warning(f"Telegram connect FAILED: {log_extra} code={code[:4]}...")
                 await message.answer("❌ Invalid or expired code. Generate a new one from the web app.")
 
+        @self.dp.message(Command("signals"))
+        async def cmd_signals(message: Message) -> None:
+            from app.database import db
+            log_extra = f"chat_id={message.from_user.id}" if message.from_user else "unknown"
+            logger.info(f"/signals {log_extra}")
+            recent = db.get_signals(limit=5)
+            if not recent:
+                await message.answer("No recent signals.")
+                return
+            lines = ["<b>Recent Signals</b>\n"]
+            for s in recent:
+                emoji = "\U0001f7e2" if s.get("direction") == "buy" else "\U0001f534" if s.get("direction") == "sell" else "\U0001f7e1"
+                lines.append(f"{emoji} {s.get('asset', '?')} {s.get('direction', '?').upper()} — {s.get('confidence', 0):.0%} confidence")
+            await message.answer("\n".join(lines))
+
         @self.dp.message(Command("help"))
         async def cmd_help(message: Message) -> None:
             log_extra = f"chat_id={message.from_user.id}" if message.from_user else "unknown"
@@ -121,6 +139,7 @@ class TelegramNotifier:
                 "<b>Commands:</b>\n"
                 "/start \u2014 welcome & link wallet\n"
                 "/connect CODE \u2014 connect using code from web app\n"
+                "/signals \u2014 recent trading signals\n"
                 "/status \u2014 current mode & status\n"
                 "/autotrade \u2014 toggle auto-trade mode\n"
                 "/help \u2014 this help\n\n"
@@ -230,38 +249,69 @@ class TelegramNotifier:
         await self.broadcast(text)
 
     async def notify_whale_alert(self, data: dict[str, Any]) -> None:
-        addr = data.get("address", "unknown")[:10]
+        full_addr = data.get("address", "unknown")
         score = data.get("sentinel_score", 0)
         wtype = data.get("wallet_type", "unknown")
         vol = data.get("totalValue", 0)
         tags = data.get("tags", [])
+        ai_reasoning = data.get("ai_reasoning", "")
         tag_str = " | ".join(tags[:3]) if tags else ""
+        type_emoji = {"anomaly": "\u26a0\ufe0f", "smart_money": "\U0001f9e0", "whale": "\U0001f40b", "insider": "\U0001f575\ufe0f", "cex": "\U0001f3e6", "fresh": "\U0001f476", "clean": "\U00002705", "heavy_distributor": "\U0001f4e5", "heavy_accumulator": "\U0001f4e4"}.get(wtype, "\U0001f441\ufe0f")
         text = (
-            f"\U0001f40b <b>Whale Alert</b>\n"
-            f"Wallet: <code>{addr}...</code>\n"
-            f"Type: {wtype}\n"
-            f"Score: {score:.0%}\n"
-            f"Volume: {vol:.2f} ETH\n"
-            f"{tag_str}"
+            f"{type_emoji} <b>Whale Alert</b>\n"
+            f"\U0001f4cc Wallet: <a href='{EXPLORER_URL}/address/{full_addr}'>{full_addr}</a>\n"
+            f"\U0001f7e8 Score: {score:.0%}\n"
+            f"\U0001f4b0 Volume: {vol:.2f} ETH\n"
+            f"\U0001f50d Type: {wtype}\n"
         )
-        logger.info(f"Broadcasting whale alert: {addr} type={wtype} score={score:.2f}")
+        if tag_str:
+            text += f"\U0001f4cb Tags: {tag_str}\n"
+        if ai_reasoning:
+            text += f"\U0001f9e0 {ai_reasoning}\n"
+        logger.info(f"Broadcasting whale alert: {full_addr[:10]} type={wtype} score={score:.2f}")
         await self.broadcast(text)
 
     async def notify_anomaly(self, anomaly: dict[str, Any]) -> None:
-        addr = anomaly.get("address", "unknown")[:10]
+        full_addr = anomaly.get("address") or anomaly.get("wallet", "unknown")
         score = anomaly.get("anomaly_score", 0)
         tx_count = anomaly.get("tx_count", 0)
         value = anomaly.get("total_value", 0)
         details = anomaly.get("details", "")
+        ai_reasoning = anomaly.get("ai_reasoning", "")
         text = (
             f"\u26a0\ufe0f <b>Anomaly Detected</b>\n"
-            f"Wallet: <code>{addr}...</code>\n"
-            f"Anomaly Score: {score:.0%}\n"
-            f"Txs: {tx_count}\n"
-            f"Volume: ${value:,.0f}\n"
-            f"{details}"
+            f"\U0001f4cc Wallet: <a href='{EXPLORER_URL}/address/{full_addr}'>{full_addr}</a>\n"
+            f"\U0001f7e8 Score: {score:.0%}\n"
+            f"\U0001f4dd Txs: {tx_count}\n"
+            f"\U0001f4b0 Volume: ${value:,.0f}\n"
+            f"\U0001f50d Found by: Isolation Forest + AltLLM\n"
         )
-        logger.info(f"Broadcasting anomaly: {addr} score={score:.2f}")
+        if details:
+            text += f"\U0001f4cb {details}\n"
+        if ai_reasoning:
+            text += f"\U0001f9e0 {ai_reasoning}\n"
+        logger.info(f"Broadcasting anomaly: {full_addr[:10]} score={score:.2f}")
+        await self.broadcast(text)
+
+    async def notify_insider_cluster(self, cluster: dict[str, Any]) -> None:
+        size = cluster.get("size", 0)
+        confidence = cluster.get("confidence", 0)
+        members = cluster.get("members", [])
+        total_vol = cluster.get("total_volume", 0)
+        text = (
+            f"\U0001f575\ufe0f <b>Insider Cluster Detected</b>\n"
+            f"\U0001f4ca Size: {size} wallets\n"
+            f"\U0001f7e8 Confidence: {confidence:.0%}\n"
+            f"\U0001f4b0 Volume: {total_vol:.2f} ETH\n"
+            f"\U0001f50d Found by: Cluster Analyzer (Transaction Graph)\n"
+        )
+        for m in members[:5]:
+            addr = m.get("address", "")
+            if addr:
+                text += f"<a href='{EXPLORER_URL}/address/{addr}'>\U0001f517 {addr}</a>\n"
+        if len(members) > 5:
+            text += f"...and {len(members) - 5} more\n"
+        logger.info(f"Broadcasting insider cluster: {size} members confidence={confidence:.2f}")
         await self.broadcast(text)
 
 

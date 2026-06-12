@@ -36,8 +36,8 @@ async def init_telegram_connection():
     db.save_telegram_pending(code, session_token, time.time() + 300)
     logger.info(f"Telegram init: code={code} session_token={session_token[:8]}...")
 
-    from app.services.telegram_bot import telegram
-    bot_username = telegram.bot_username or "dorahacksmantle_bot"
+    from app.config import settings
+    bot_username = settings.TELEGRAM_BOT_USERNAME or "dorahacksmantle_bot"
     logger.info(f"Telegram init: bot_username={bot_username}")
     return InitResponse(
         code=code,

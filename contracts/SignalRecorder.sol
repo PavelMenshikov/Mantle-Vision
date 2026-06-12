@@ -88,8 +88,10 @@ contract SignalRecorder {
     }
 
     function getRecentSignals(uint256 count) external view returns (Signal[] memory) {
+        // Hard cap: не более 100 сигналов за один вызов
+        uint256 safeCount = count > 100 ? 100 : count;
         uint256 total = _signals.length;
-        uint256 resultCount = count < total ? count : total;
+        uint256 resultCount = safeCount < total ? safeCount : total;
         Signal[] memory result = new Signal[](resultCount);
         for (uint256 i = 0; i < resultCount; i++) {
             result[i] = _signals[total - resultCount + i];
@@ -98,6 +100,7 @@ contract SignalRecorder {
     }
 
     function getSignalsPagination(uint256 offset, uint256 limit) external view returns (Signal[] memory) {
+        require(limit <= 100, "SignalRecorder: limit exceeds maximum of 100");
         uint256 total = _signals.length;
         if (offset >= total) return new Signal[](0);
         uint256 resultCount = limit;

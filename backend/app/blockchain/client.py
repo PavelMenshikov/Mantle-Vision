@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Optional
 from web3 import Web3
@@ -77,6 +78,13 @@ AGENT_CONTRACT_ABI = [
         "name": "getSignalRecorder",
         "outputs": [{"name": "", "type": "address"}],
         "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [{"name": "agentId", "type": "uint256"}],
+        "name": "reportAccurate",
+        "outputs": [],
+        "stateMutability": "nonpayable",
         "type": "function",
     },
 ]
@@ -164,7 +172,7 @@ class MantleClient:
             logger.warning("Agent contract address or private key not configured")
             return None
 
-        if not self.is_connected or not self.w3:
+        if not self.is_connected() or not self.w3:
             self._connect()
             if not self.w3:
                 return None
@@ -204,7 +212,7 @@ class MantleClient:
     async def get_agent_identity(self, agent_id: int) -> Optional[dict[str, Any]]:
         if not self.agent_contract_addr:
             return None
-        if not self.is_connected or not self.w3:
+        if not self.is_connected() or not self.w3:
             self._connect()
             if not self.w3:
                 return None
@@ -233,7 +241,7 @@ class MantleClient:
             return self._signal_recorder_addr
         if not self.agent_contract_addr:
             return None
-        if not self.is_connected or not self.w3:
+        if not self.is_connected() or not self.w3:
             self._connect()
             if not self.w3:
                 return None
@@ -263,7 +271,7 @@ class MantleClient:
     ) -> Optional[int]:
         if not self.private_key or not self.agent_contract_addr:
             return None
-        if not self.is_connected or not self.w3:
+        if not self.is_connected() or not self.w3:
             self._connect()
             if not self.w3:
                 return None
@@ -302,6 +310,51 @@ class MantleClient:
         except Exception as e:
             logger.warning(f"Failed to record signal on-chain: {e}")
         return None
+
+    async def report_signal_accurate(
+        self,
+        agent_id: int,
+        signal_id: int,
+    ) -> Optional[str]:
+        """
+        Вызывает AgentIdentity.reportAccurate(agentId).
+        Должен вызываться когда сигнал подтвердился (цена пошла в предсказанном направлении).
+        """
+        if not self.agent_contract_addr or not self.private_key:
+            logger.debug("report_signal_accurate: no contract or account configured")
+            return None
+        if not self.is_connected() or not self.w3:
+            self._connect()
+            if not self.w3:
+                return None
+        try:
+            loop = asyncio.get_event_loop()
+            tx_hash = await loop.run_in_executor(
+                None,
+                lambda: self._report_accurate_sync(agent_id),
+            )
+            return tx_hash
+        except Exception as e:
+            logger.debug(f"report_signal_accurate failed: {e}")
+            return None
+
+    def _report_accurate_sync(self, agent_id: int) -> str:
+        account = Account.from_key(self.private_key)
+        contract = self.w3.eth.contract(
+            address=self.w3.to_checksum_address(self.agent_contract_addr),
+            abi=AGENT_CONTRACT_ABI,
+        )
+        tx = contract.functions.reportAccurate(agent_id).build_transaction({
+            "from": account.address,
+            "nonce": self.w3.eth.get_transaction_count(account.address),
+            "gas": 80000,
+            "gasPrice": self.w3.eth.gas_price,
+        })
+        signed = account.sign_transaction(tx)
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
+        logger.info(f"reportAccurate: agentId={agent_id}, block={receipt.blockNumber}")
+        return tx_hash.hex()
 
 
 mantle_client = MantleClient()
