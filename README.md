@@ -13,6 +13,7 @@
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?style=flat-square&logo=openai)](https://openai.com/)
 [![AltLLM](https://img.shields.io/badge/AltLLM-Crypto%20AI-FF6B6B?style=flat-square)](https://altllm.ai/)
 [![License](https://img.shields.io/badge/License-MIT-22A7F0?style=flat-square)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-000000?style=flat-square&logo=vercel)](https://frontend-two-iota-51.vercel.app)
 
 ---
 
@@ -212,7 +213,7 @@ Risk score combines: wallet age, tx frequency, value moved, cluster membership, 
 
 **Frontend:** Vue 3, Vite, Tailwind CSS, Pinia, Lucide Icons  
 **Backend:** FastAPI, Web3.py, OpenAI SDK, scikit-learn, NetworkX  
-**AI:** OpenAI GPT-4o-mini, Groq Mixtral, AltLLM (crypto-native)  
+**AI:** OpenAI GPT-4o-mini, Groq Llama 3.3, AltLLM (crypto-native)  
 **Blockchain:** Mantle Network (EVM L2) — Sepolia (Chain ID: 5003)  
 **Infra:** Docker, SQLite, WebSocket
 
